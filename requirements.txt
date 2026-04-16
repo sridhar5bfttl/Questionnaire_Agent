@@ -1,0 +1,9 @@
+streamlit
+pytest
+pytest-mock
+langchain
+langchain-openai
+langchain-core
+openai
+anthropic
+python-dotenv

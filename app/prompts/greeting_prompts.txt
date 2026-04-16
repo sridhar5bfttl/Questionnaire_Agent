@@ -1,0 +1,5 @@
+1. I want to automate invoice processing.
+2. I have a dataset for sales prediction.
+3. I want to build a chatbot for customer support.
+4. I need to extract information from PDF documents.
+5. I want to analyze customer sentiment from reviews.
