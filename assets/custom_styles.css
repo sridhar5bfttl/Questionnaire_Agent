@@ -1,0 +1,68 @@
+/* Premium Glassmorphism Theme for Vantage Point AI */
+
+:root {
+    --primary-color: #007BFF;
+    --background-blur: 12px;
+    --glass-background: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-color: #F8F9FA;
+}
+
+/* Glassmorphism for Chat Bubbles */
+[data-testid="stChatMessage"] {
+    background: var(--glass-background) !important;
+    backdrop-filter: blur(var(--background-blur)) !important;
+    -webkit-backdrop-filter: blur(var(--background-blur)) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 15px !important;
+    margin-bottom: 15px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Dashboard Cards and Metrics */
+[data-testid="stMetric"] {
+    background: rgba(0, 123, 255, 0.05) !important;
+    padding: 15px !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(0, 123, 255, 0.1) !important;
+}
+
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+    background-image: linear-gradient(#0E1117, #001524) !important;
+}
+
+/* Buttons Hover Effects */
+.stButton>button {
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.stButton>button:hover {
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.4) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* Interactive Tabs Styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 15px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-radius: 8px 8px 0px 0px;
+    padding: 10px 15px !important;
+    border: 1px solid transparent !important;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+    color: var(--primary-color) !important;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: rgba(0, 123, 255, 0.2) !important;
+    border-bottom: 3px solid var(--primary-color) !important;
+    color: white !important;
+}

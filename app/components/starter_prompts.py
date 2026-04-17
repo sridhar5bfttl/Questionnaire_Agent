@@ -17,7 +17,7 @@ def render_starter_prompts():
     # Render prompts in columns or a list of buttons
     selected_prompt = None
     for prompt in prompts:
-        if st.button(prompt, use_container_width=True):
+        if st.button(prompt, width="stretch"):
             selected_prompt = prompt
             
     return selected_prompt

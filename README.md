@@ -7,7 +7,12 @@ An agentic AI chat application built with Streamlit and LangChain to help classi
 - `app/`:
     - `components/`: UI-specific modules (chat interface, buttons).
     - `prompts/`: System instructions and starter prompt templates.
-    - `utils/`: State management and LLM orchestration logic.
+    - `utils/`: State management, database persistence, and LLM orchestration.
+- `pages/`:
+    - `1_History_Dashboard.py`: A dedicated dashboard to review saved sessions, costs, and audits.
+- `documentation/`:
+    - [Architecture Overview](file:///Volumes/superfast/LinkedIn/Questionnaire_Agent/documentation/architecture.md): Technical breakdown of agents and data flow.
+    - [User Guide](file:///Volumes/superfast/LinkedIn/Questionnaire_Agent/documentation/user_guide.md): How to use the app and manage chat history.
 - `tests/`: Automated test suite for logic verification.
 
 ## Setup Instructions
@@ -44,5 +49,13 @@ The application uses a state-machine approach to guide the user through five pha
 1. **Greeting**: Welcome message and starter prompts.
 2. **Probing**: Dynamic questioning to gather data details.
 3. **Summarization**: Classification of the use case with confidence scores.
-4. **Feedback**: Gathering user input on the proposal.
+4. **Feedback**: Gathering user input and saving results to a local SQLite database.
 5. **Deep Dive**: Detailed research on a specific selected solution.
+
+## Data Persistence
+The application automatically saves assessments and chat history to a local SQLite database located at `data/conversations.db`.
+
+You can query the data using standard SQLite tools:
+```bash
+sqlite3 data/conversations.db "SELECT * FROM assessments;"
+```

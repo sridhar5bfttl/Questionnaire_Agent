@@ -7,3 +7,5 @@ langchain-core
 openai
 anthropic
 python-dotenv
+plotly
+fpdf2

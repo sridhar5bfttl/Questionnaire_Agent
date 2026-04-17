@@ -21,17 +21,28 @@ class LLMClient:
 
     def get_response(self, messages, current_phase):
         if not self.client:
-            return f"[MOCK] This is a mock response for phase {current_phase}. Please set OPENAI_API_KEY."
+            return {
+                "content": f"[MOCK] This is a mock response for phase {current_phase}. Please set OPENAI_API_KEY.",
+                "metadata": {"token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+            }
 
         system_msg = SystemMessage(content=self._get_system_prompt())
         
         # Convert streamlit messages to LangChain messages
         langchain_msgs = [system_msg]
         for m in messages:
+            content = m["content"]
+            # Handle cases where content might be a dictionary from previous state bugs
+            if isinstance(content, dict):
+                content = content.get("content", str(content))
+            
             if m["role"] == "user":
-                langchain_msgs.append(HumanMessage(content=m["content"]))
+                langchain_msgs.append(HumanMessage(content=content))
             else:
-                langchain_msgs.append(AIMessage(content=m["content"]))
+                langchain_msgs.append(AIMessage(content=content))
         
         response = self.client.invoke(langchain_msgs)
-        return response.content
+        return {
+            "content": response.content,
+            "metadata": response.response_metadata.get("token_usage", {})
+        }

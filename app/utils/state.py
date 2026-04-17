@@ -16,6 +16,15 @@ def init_state():
     if "phase" not in st.session_state:
         st.session_state.phase = ChatPhase.GREETING
     
+    if "total_input_tokens" not in st.session_state:
+        st.session_state.total_input_tokens = 0
+    
+    if "total_output_tokens" not in st.session_state:
+        st.session_state.total_output_tokens = 0
+    
+    if "session_saved" not in st.session_state:
+        st.session_state.session_saved = False
+    
     if "user_data" not in st.session_state:
         st.session_state.user_data = {
             "description": "",
