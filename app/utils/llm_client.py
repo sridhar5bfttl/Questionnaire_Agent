@@ -1,4 +1,5 @@
 import os
+import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -7,7 +8,7 @@ load_dotenv()
 
 class LLMClient:
     def __init__(self, model_name="gpt-4o"):
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         if not api_key:
             # Placeholder/Mock if no API key is found for local dev
             self.client = None
