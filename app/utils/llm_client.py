@@ -8,7 +8,8 @@ load_dotenv()
 
 class LLMClient:
     def __init__(self, model_name="gpt-4o"):
-        api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+        # Check Secrets -> Env -> SessionState (UI Input)
+        api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or st.session_state.get("openai_api_key")
         if not api_key:
             # Placeholder/Mock if no API key is found for local dev
             self.client = None

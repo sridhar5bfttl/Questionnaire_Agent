@@ -19,6 +19,12 @@ except:
 st.title("🎯 Vantage Point AI: History")
 st.markdown("Review previous assessments, token usage, and AI audit scores.")
 
+# --- API KEY GUARD ---
+existing_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+if not existing_key and "openai_api_key" not in st.session_state:
+    st.warning("Please provide an OpenAI API key in the main chat sidebar to access history features.")
+    st.stop()
+
 # Fetch all sessions
 sessions = get_all_sessions()
 

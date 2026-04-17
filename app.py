@@ -12,6 +12,25 @@ st.set_page_config(page_title="Vantage Point AI", page_icon="🎯", layout="wide
 # Initialize Session State, Database & Auditor
 init_state()
 init_db()
+
+# --- API KEY GUARD ---
+# Check prioritized order: Secrets -> Env -> SessionState
+existing_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+
+with st.sidebar:
+    st.divider()
+    if not existing_key:
+        st.subheader("🗝️ Configuration")
+        user_key = st.text_input("Enter OpenAI API Key", type="password", help="Required for template users if no .env or secrets are set.")
+        if user_key:
+            st.session_state.openai_api_key = user_key
+            st.success("Key applied for this session!")
+        else:
+            st.warning("Please add your OpenAI API key to start the diagnostic.")
+            st.stop()
+    else:
+        st.caption("✅ API Key active (System)")
+
 auditor = AuditorAgent()
 
 # Custom CSS Injection
