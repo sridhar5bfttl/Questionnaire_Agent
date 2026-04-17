@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from app.utils.state import init_state, ChatPhase, update_phase, add_message, get_messages
 from app.utils.llm_client import LLMClient
 from app.components.chat_interface import render_chat_history, render_chat_input

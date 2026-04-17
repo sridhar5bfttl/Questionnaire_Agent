@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 import pandas as pd
 import plotly.express as px
 from app.utils.db_manager import get_all_sessions, get_session_messages, get_session_assessment, hide_session
