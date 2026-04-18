@@ -255,8 +255,17 @@ def get_session_duration(session_id):
 
     duration_min = round(total_seconds / 60, 1)
     
+    # Format as Mm Ss
+    mins = int(total_seconds // 60)
+    secs = int(total_seconds % 60)
+    if mins > 0:
+        duration_formatted = f"{mins}m {secs}s"
+    else:
+        duration_formatted = f"{secs}s"
+    
     return {
         "started_at": timestamps[0].strftime("%d %b %Y, %H:%M"),
         "ended_at": timestamps[-1].strftime("%H:%M"),
-        "duration_minutes": duration_min
+        "duration_minutes": duration_min,
+        "duration_formatted": duration_formatted
     }

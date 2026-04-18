@@ -141,7 +141,7 @@ else:
         m1, m2, m3 = st.columns(3)
         m1.metric("📅 Started At", duration_data["started_at"])
         m2.metric("🏁 Last Message", duration_data["ended_at"])
-        m3.metric("⏱️ Duration", f"{duration_data['duration_minutes']} min")
+        m3.metric("⏱️ Duration", duration_data["duration_formatted"])
     with scol2:
         if assessment:
             usage_data = {
