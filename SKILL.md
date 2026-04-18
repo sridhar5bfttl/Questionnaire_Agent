@@ -92,13 +92,19 @@ To solve the problem of inflated duration in resumed sessions, the `get_session_
   3. Specialized prompt returns a validated JSON object with `classification`, `confidence`, `rationale`.
   4. Persist to the `assessments` table via `save_assessment()`.
 
-## 12. Identity & Quota Management Pattern
-- **Gatekeeper Logic**: `st.session_state.is_guest` determines access. Unauthenticated users are presented with a tabbed Login/Signup gate on main app launch.
-- **Hidden Portals**: The Request Access portal is prefixed with an underscore (`pages/_Request_Access.py`) to hide it from the Streamlit sidebar, keeping it contextual to programmatic logic (`st.switch_page`).
-- **Quota Overrides**: Global fallbacks like `GUEST_MAX_SESSIONS` are overridden by per-user limits defined in the `user_quotas` table.
-- **Admin Tabular Analytics**: The UI uses pandas to render cross-joined data between `users`, `sessions`, and `user_quotas` inside `db_manager.py:get_admin_user_stats()` to present a unified "Global Intelligence" dashboard.
+## 12. Identity & App Login Workflow
+- **Gatekeeper Logic**: `st.session_state.is_guest` and `st.session_state.bypass_login` determine access. Unauthenticated users are presented with a tabbed Login/Signup gate upon main application launch.
+- **Immediate State Hydration**: Approved users who login skip the chat history reload initially until they select a session; their state is dynamically updated to display their "Personal Usage Dashboard" in the sidebar instantly.
 
-## 13. Directory Structure
+## 13. Registration & Quota Extension Pattern
+- **Hidden Portals**: The Request Access portal is prefixed with an underscore (`pages/_Request_Access.py`) to hide it from the Streamlit sidebar. It is only accessible programmatically via `st.switch_page("pages/_Request_Access.py")` when a user attempts a new signup or hits a quota threshold.
+- **Quota Overrides**: Global fallbacks (e.g., `GUEST_MAX_SESSIONS`) are gracefully overridden by individual user records queried from the `user_quotas` table during the login sequence.
+
+## 14. Admin Governance & Analytics
+- **Cross-Joined Analytics (Global Intelligence)**: The backend aggressively uses Pandas to construct holistic dataframes. Inside `db_manager.py:get_admin_user_stats()`, the system cross-joins `users`, `sessions`, and `user_quotas` to provide an exact snapshot of "Sessions Used" versus "Remaining Quota" for the Admin.
+- **Centralized Approval Loop**: Quota Requests are surfaced in a dedicated tab on the Admin Dashboard where approval directly executes an UPDATE mapping onto the specific user's `max_sessions` and `status` fields.
+
+## 15. Directory Structure
 ```
 /app/           - Logic layer
   /components/  - Modular UI (chat, prompts)
@@ -111,7 +117,7 @@ To solve the problem of inflated duration in resumed sessions, the `get_session_
 /documentation/ - Architecture and user guides
 ```
 
-## 14. Mandatory Development Workflow
+## 16. Mandatory Development Workflow
 To maintain project integrity:
 1. **Schema Check**: When adding a new metric, update `init_db()` and run `ALTER TABLE` on the existing DB.
 2. **Implementation**: Build logic in `/app/utils/` before touching the UI.
