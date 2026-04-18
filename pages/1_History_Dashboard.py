@@ -63,7 +63,7 @@ else:
 
     # Format session list for display - show title + formatted date
     session_options = {
-        f"{s['title']} — {s['timestamp'][:10]}": s['id']
+        f"#{s.get('session_number', 1)} {s['title']} — {s['timestamp'][:16]}": s['id']
         for s in display_sessions
     }
     selected_label = st.sidebar.radio("View Details For:", list(session_options.keys()))
@@ -149,7 +149,8 @@ else:
     duration_data = get_session_duration(selected_session_id)
     scol1, scol2 = st.columns([3, 1])
     with scol1:
-        st.header(f"Topic: {selected_session['title']}")
+        s_num = selected_session.get('session_number', 1)
+        st.header(f"Session #{s_num}: {selected_session['title']}")
         # Timestamp & Duration metrics row
         m1, m2, m3 = st.columns(3)
         m1.metric("📅 Started At", duration_data["started_at"])
@@ -185,21 +186,14 @@ else:
         if not messages:
             st.info("No messages found for this session.")
         else:
-            with st.expander("📖 View Full Segmented Transcript", expanded=False):
-                last_burst = None
-                for msg in messages:
-                    # Show Session Subheading when burst number changes
-                    current_burst = msg.get("burst_number", 1)
-                    if current_burst != last_burst:
-                        st.markdown(f"#### 🕒 Session {current_burst}")
-                        last_burst = current_burst
-                    
-                    with st.chat_message(msg['role']):
-                        st.markdown(msg['content'])
-                        ts = msg.get("timestamp", "")
-                        if ts:
-                            label = "You" if msg["role"] == "user" else "Vantage Point AI"
-                            st.caption(f"🕐 {label} · {ts}")
+            # Show conversation directly as a trail
+            for msg in messages:
+                with st.chat_message(msg['role']):
+                    st.markdown(msg['content'])
+                    ts = msg.get("timestamp", "")
+                    if ts:
+                        label = "You" if msg["role"] == "user" else "Vantage Point AI"
+                        st.caption(f"🕐 {label} · {ts}")
 
     with tab2:
         assessment = get_session_assessment(selected_session_id)

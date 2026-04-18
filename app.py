@@ -61,18 +61,18 @@ def trigger_auto_save():
                     st.session_state.total_output_tokens
                 )
                 
-                # 5. Persist (Update existing if resumed, otherwise creates new)
+                # 5. Persist (ALWAYS New record per user request)
                 session_id = save_chat_session(
                     st.session_state.messages, 
                     title=title,
-                    summary="Unified Audit Save",
+                    summary="Incremental Save",
                     input_tokens=st.session_state.total_input_tokens,
                     output_tokens=st.session_state.total_output_tokens,
                     total_cost=cost,
                     audit_score=score,
                     audit_feedback=feedback,
                     current_phase=st.session_state.phase.name,
-                    session_id=st.session_state.current_session_id,
+                    session_id=None, # Force new record
                     user_id=st.session_state.user_id,
                     is_guest=int(st.session_state.is_guest)
                 )
@@ -244,18 +244,18 @@ if st.session_state.phase in [ChatPhase.SUMMARY, ChatPhase.FEEDBACK]:
                     st.session_state.total_output_tokens
                 )
                 
-                # 3. Save to DB (Update if Resumed)
+                # 3. Save to DB (Always New per request)
                 session_id = save_chat_session(
                     st.session_state.messages, 
                     title=title,
-                    summary="Audited Assessment Save",
+                    summary="Manual Audit Save",
                     input_tokens=st.session_state.total_input_tokens,
                     output_tokens=st.session_state.total_output_tokens,
                     total_cost=cost,
                     audit_score=score,
                     audit_feedback=feedback,
                     current_phase=st.session_state.phase.name,
-                    session_id=st.session_state.current_session_id,
+                    session_id=None, # Force new
                     user_id=st.session_state.user_id,
                     is_guest=int(st.session_state.is_guest)
                 )
