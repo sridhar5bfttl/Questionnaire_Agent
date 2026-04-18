@@ -6,7 +6,9 @@ from app.utils.db_manager import (
     update_quota_request, 
     get_system_settings, 
     update_system_setting,
-    set_user_quota
+    set_user_quota,
+    get_pending_users,
+    update_user_status
 )
 from app.config import ADMIN_USER, ADMIN_PASS
 import plotly.express as px
@@ -38,7 +40,7 @@ settings = get_system_settings()
 admin_email = settings.get('admin_notification_email', 'admin@vantagepoint.ai')
 
 # --- TABBED INTERFACE ---
-tab1, tab2, tab3 = st.tabs(["📊 User Activity Stats", "📬 Quota Requests", "⚙️ System Settings"])
+tab1, tab2, tab3, tab4 = st.tabs(["📊 User Activity Stats", "📬 Quota Requests", "📝 New Registrations", "⚙️ System Settings"])
 
 with tab1:
     st.header("Global User Intelligence")
@@ -96,6 +98,27 @@ with tab2:
         st.info("No extension requests received.")
 
 with tab3:
+    st.header("New Account Approvals")
+    pending = get_pending_users()
+    if pending:
+        for p in pending:
+            with st.container():
+                c1, c2, c3 = st.columns([2, 1, 1])
+                c1.write(f"**Email:** {p['user_id']}")
+                c1.caption(f"Joined: {p['created_at']}")
+                if c2.button("✅ Approve", key=f"app_user_{p['user_id']}"):
+                    update_user_status(p['user_id'], 'APPROVED')
+                    st.success(f"Approved {p['user_id']}")
+                    st.rerun()
+                if c3.button("❌ Reject", key=f"rej_user_{p['user_id']}", type="primary"):
+                    update_user_status(p['user_id'], 'REJECTED')
+                    st.error(f"Rejected {p['user_id']}")
+                    st.rerun()
+                st.divider()
+    else:
+        st.info("No pending registrations at the moment.")
+
+with tab4:
     st.header("Global Constants")
     new_email = st.text_input("Admin Notification Email", value=admin_email)
     new_threshold = st.slider("Audit Score Threshold (Weak vs Healthy)", 0, 10, int(settings.get('audit_threshold', 4)))

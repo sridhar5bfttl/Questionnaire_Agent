@@ -94,6 +94,15 @@ def init_db():
         )
     ''')
 
+    # Table for Identity & Access Management
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            status TEXT DEFAULT 'PENDING',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # Table for Individual User Quotas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_quotas (
@@ -566,4 +575,40 @@ def set_user_quota(user_id, max_sessions, max_daily=2, max_tokens=5000):
     ''', (user_id, max_sessions, max_daily, max_tokens))
     conn.commit()
     conn.close()
+
+
+def ensure_user(user_id):
+    """Check if user exists; if not, create them with PENDING status."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('INSERT OR IGNORE INTO users (user_id, status) VALUES (?, ?)', (user_id, 'PENDING'))
+    conn.commit()
+    conn.close()
+
+def get_user_status(user_id):
+    """Retrieve the account status of a user (PENDING, APPROVED, REJECTED)."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT status FROM users WHERE user_id = ?', (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else "GUEST"
+
+def update_user_status(user_id, status):
+    """Administrator action to approve/reject a new registration."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET status = ? WHERE user_id = ?', (status, user_id))
+    conn.commit()
+    conn.close()
+
+def get_pending_users():
+    """Get all users waiting for initial registration approval."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE status = 'PENDING' ORDER BY created_at DESC")
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
 

@@ -8,7 +8,7 @@ from app.utils.db_manager import (
     init_db, save_chat_session, save_assessment, 
     get_session_messages, get_all_sessions, get_user_stats,
     log_activity, create_quota_request, get_all_quota_requests,
-    get_system_settings, get_user_quota
+    get_system_settings, get_user_quota, ensure_user, get_user_status
 )
 from app.utils.auditor_agent import AuditorAgent
 from app.utils.quota_agent import QuotaAgent
@@ -102,11 +102,20 @@ with st.sidebar:
         st.info(f"**Guest Mode Active**\n\n📅 Daily: {stats['daily']}/2 sessions\n📚 Total: {stats['total']}/4 sessions")
         email = st.text_input("Login (Email) to remove limits", placeholder="user@example.com")
         if email and st.button("Login"):
-            st.session_state.user_id = email
-            st.session_state.is_guest = False
-            log_activity(email, "LOGIN")
-            st.success(f"Welcome, {email}!")
-            st.rerun()
+            ensure_user(email)
+            status = get_user_status(email)
+            
+            if status == "APPROVED":
+                st.session_state.user_id = email
+                st.session_state.is_guest = False
+                log_activity(email, "LOGIN")
+                st.success(f"Welcome back, {email}!")
+                st.rerun()
+            elif status == "PENDING":
+                st.warning("⏳ **Request Received**: Your registration is pending administrator review. You will be able to login once approved.")
+                log_activity(email, "SIGNUP_ATTEMPT")
+            elif status == "REJECTED":
+                st.error("🚫 **Access Denied**: Your account registration has been rejected.")
     else:
         st.success(f"Logged in as: **{st.session_state.user_id}**")
         if st.button("Logout"):
