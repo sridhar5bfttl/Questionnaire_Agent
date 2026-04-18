@@ -117,6 +117,30 @@ with st.sidebar:
                 st.switch_page("pages/3_Request_Access.py")
     else:
         st.success(f"Logged in as: **{st.session_state.user_id}**")
+        
+        # User Stats Dashboard
+        stats = get_user_stats(st.session_state.user_id)
+        
+        # Format duration
+        tot_sec = stats['total_duration_seconds']
+        h, m = int(tot_sec // 3600), int((tot_sec % 3600) // 60)
+        dur_str = f"{h}h {m}m" if h > 0 else f"{m}m"
+        
+        with st.expander("📊 My Usage Dashboard", expanded=True):
+            c1, c2 = st.columns(2)
+            c1.metric("Sessions", f"{stats['total']}/{stats['max_sessions']}")
+            c2.metric("Active Time", dur_str)
+            
+            # Progress bar for tokens
+            used_tokens = stats['total_input'] + stats['total_output']
+            max_tokens = stats['max_tokens']
+            progress = min(1.0, used_tokens / max_tokens)
+            st.caption(f"Token Consumption: {used_tokens:,} / {max_tokens:,}")
+            st.progress(progress)
+            
+            if st.button("Request More Quota"):
+                st.switch_page("pages/3_Request_Access.py")
+        
         if st.button("Logout"):
             trigger_auto_save()
             st.session_state.user_id = "guest_default"

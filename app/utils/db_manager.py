@@ -375,21 +375,56 @@ def update_session_title(session_id, new_title):
     conn.close()
 
 def get_user_stats(user_id):
-    """Get total sessions and daily sessions for a user."""
+    """Get comprehensive activity stats for a specific user."""
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    # Total
-    cursor.execute('SELECT COUNT(*) FROM sessions WHERE user_id = ? AND is_active = 1', (user_id,))
-    total = cursor.fetchone()[0]
+    # 1. Aggregates from sessions
+    cursor.execute('''
+        SELECT 
+            COUNT(*) as total_sessions_count,
+            SUM(input_tokens) as total_input,
+            SUM(output_tokens) as total_output,
+            MAX(timestamp) as last_active
+        FROM sessions 
+        WHERE user_id = ? AND is_active = 1
+    ''', (user_id,))
+    s_row = cursor.fetchone()
     
-    # Daily (last 24 hours or calendar day?) Let's do calendar day for simplicity
+    # 2. Daily sessions
     today = datetime.now().strftime('%Y-%m-%d')
     cursor.execute('SELECT COUNT(*) FROM sessions WHERE user_id = ? AND is_active = 1 AND timestamp LIKE ?', (user_id, f"{today}%"))
     daily = cursor.fetchone()[0]
     
+    # 3. Quota limits
+    cursor.execute('SELECT * FROM user_quotas WHERE user_id = ?', (user_id,))
+    q_row = cursor.fetchone()
+    q_data = dict(q_row) if q_row else {"max_sessions": 10, "max_tokens": 5000}
+    
+    # 4. Total Duration (Need to sum across all user sessions)
+    cursor.execute('''
+        SELECT m.timestamp
+        FROM messages m
+        JOIN sessions s ON m.session_id = s.id
+        WHERE s.user_id = ? AND s.is_active = 1
+        ORDER BY m.timestamp ASC
+    ''', (user_id,))
+    m_rows = cursor.fetchall()
+    
     conn.close()
-    return {"total": total, "daily": daily}
+    
+    total_sec, _ = calculate_active_duration(m_rows)
+    
+    return {
+        "total": s_row['total_sessions_count'] or 0,
+        "daily": daily,
+        "total_input": s_row['total_input'] or 0,
+        "total_output": s_row['total_output'] or 0,
+        "total_duration_seconds": total_sec,
+        "max_sessions": q_data['max_sessions'],
+        "max_tokens": q_data.get('max_tokens', 5000)
+    }
 
 def hide_session(session_id):
     """Mark a session as inactive (hidden from UI)."""
