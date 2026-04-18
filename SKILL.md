@@ -59,26 +59,32 @@ The `search_sessions(query)` function uses a two-pass SQL approach:
 3. **Deduplication**: Results from both passes are merged and deduplicated by `session_id`, with session-level matches taking priority.
 - The UI displays a `💡 Match:` snippet below the selected session to give immediate context before resuming.
 
-## 7. Precise Activity Tracking (Active Duration)
+## 7. Persistent Session Identity (Stable Titles)
+To prevent the AI from overwriting user-defined or previously established titles:
+- **Title Guard**: `auditor.generate_title()` is only invoked if `st.session_state.current_title` is `None`.
+- **State Preservation**: The `load_session_state()` function restores the `current_title` from the database `sessions` metadata upon resumption.
+- **Manual Override**: The `update_session_title(session_id, new_title)` utility in the Dashboard allows users to force a rename, which then becomes the stable identity for that session.
+
+## 8. Precise Activity Tracking (Active Duration)
 To solve the problem of inflated duration in resumed sessions, the `get_session_duration()` skill uses **Burst Analysis**:
 - **Algorithm**: Fetches all timestamps, then iterates to sum only the gaps that are **less than 30 minutes**.
 - **Resumption Handling**: Large gaps (e.g., 6 hours) between sessions are ignored, accurately reflecting only active conversation time.
-- **Micro-Adjustment**: Adds a 1-minute floor for the initial setup time.
+- **Micro-Adjustment**: Adds a 10s floor per active burst for setup/thought time.
 - **High-Res Timestamps**: All messages now capture `HH:MM:SS.mmm` (milliseconds) in the UI and full microsecond ISO format in the database to ensure stable ordering and precise audit trails.
 
-## 8. Cost Tracking (The GPT-5.1 Pattern)
+## 9. Cost Tracking (The GPT-5.1 Pattern)
 - Accumulate in session state: `total_input_tokens` and `total_output_tokens`.
 - Apply hypothetical pricing in the Save process:
   - **Input**: $0.05 / 1k tokens
   - **Output**: $0.15 / 1k tokens
 
-## 7. PDF Generation (Unicode-Safe Pattern)
+## 10. PDF Generation (Unicode-Safe Pattern)
 - Use `fpdf2` for report generation.
 - **Critical**: Always wrap all text through `sanitize_text()` before passing to any FPDF method.
 - `sanitize_text()` maps common Unicode characters (en-dash, smart quotes, bullets) to their Latin-1 equivalents, with a final `.encode('latin-1', 'replace')` fallback.
 - Output must be cast to `bytes` before being passed to `st.download_button()`.
 
-## 8. Technical Extraction Logic
+## 11. Technical Extraction Logic
 - Free-form text summaries from the LLM must be "structured" for the dashboard.
 - **Extraction Flow**:
   1. Detect `SUMMARY` phase.
@@ -86,7 +92,7 @@ To solve the problem of inflated duration in resumed sessions, the `get_session_
   3. Specialized prompt returns a validated JSON object with `classification`, `confidence`, `rationale`.
   4. Persist to the `assessments` table via `save_assessment()`.
 
-## 9. Directory Structure
+## 12. Directory Structure
 ```
 /app/           - Logic layer
   /components/  - Modular UI (chat, prompts)
@@ -99,11 +105,12 @@ To solve the problem of inflated duration in resumed sessions, the `get_session_
 /documentation/ - Architecture and user guides
 ```
 
-## 10. Mandatory Development Workflow
+## 13. Mandatory Development Workflow
 To maintain project integrity:
 1. **Schema Check**: When adding a new metric, update `init_db()` and run `ALTER TABLE` on the existing DB.
 2. **Implementation**: Build logic in `/app/utils/` before touching the UI.
 3. **3-Tier Auth**: Ensure any new agent or service uses the 3-tier key resolution pattern.
 4. **Audit Integration**: Link new features to `AuditorAgent` for tracking where relevant.
 5. **Dashboard Update**: Expose new data points in `pages/1_History_Dashboard.py`.
-6. **Verification**: Run `pytest tests/ -v` and manually verify the Resume flow end-to-end.
+6. **Title Stability**: Always check `st.session_state.current_title` before calling the title generator to prevent overwrites.
+7. **Verification**: Run `pytest tests/ -v` and manually verify the Resume/Rename flows end-to-end.

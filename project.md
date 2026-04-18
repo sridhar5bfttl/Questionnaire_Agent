@@ -56,6 +56,8 @@
 5. **Session Resumption**: "🚀 Resume Conversation" button to pick up any session exactly where it left off.
 6. **Keyword Search**: Full-text search across session titles, conversation content, and audit feedback — with match snippets for quick context.
 7. **Active Duration**: Precise session timing that calculates "Active Conversation Time" by summing bursts of activity (threshold: 30 mins) and ignoring long idle gaps, displayed in `Mm Ss` format.
+8. **Stable Titles**: AI-generated titles are created only once and shielded from being overwritten during auto-saves or resumes.
+9. **Manual Renaming**: Full CRUD capability for session titles directly from the History Dashboard sidebar.
 
 ---
 
