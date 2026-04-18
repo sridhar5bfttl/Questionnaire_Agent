@@ -59,7 +59,14 @@ The `search_sessions(query)` function uses a two-pass SQL approach:
 3. **Deduplication**: Results from both passes are merged and deduplicated by `session_id`, with session-level matches taking priority.
 - The UI displays a `💡 Match:` snippet below the selected session to give immediate context before resuming.
 
-- Capture `token_usage` from LangChain response metadata.
+## 7. Precise Activity Tracking (Active Duration)
+To solve the problem of inflated duration in resumed sessions, the `get_session_duration()` skill uses **Burst Analysis**:
+- **Algorithm**: Fetches all timestamps, then iterates to sum only the gaps that are **less than 30 minutes**.
+- **Resumption Handling**: Large gaps (e.g., 6 hours) between sessions are ignored, accurately reflecting only active conversation time.
+- **Micro-Adjustment**: Adds a 1-minute floor for the initial setup time.
+- **High-Res Timestamps**: All messages now capture `HH:MM:SS.mmm` (milliseconds) in the UI and full microsecond ISO format in the database to ensure stable ordering and precise audit trails.
+
+## 8. Cost Tracking (The GPT-5.1 Pattern)
 - Accumulate in session state: `total_input_tokens` and `total_output_tokens`.
 - Apply hypothetical pricing in the Save process:
   - **Input**: $0.05 / 1k tokens
