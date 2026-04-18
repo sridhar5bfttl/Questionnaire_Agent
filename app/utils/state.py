@@ -65,3 +65,7 @@ def load_session_state(session_id, messages, metadata):
         st.session_state.phase = ChatPhase[phase_str]
     except KeyError:
         st.session_state.phase = ChatPhase.SUMMARY if len(messages) > 10 else ChatPhase.PROBING
+    
+    # Safety: If we have messages, we shouldn't be in GREETING phase
+    if st.session_state.phase == ChatPhase.GREETING and len(messages) > 0:
+        st.session_state.phase = ChatPhase.PROBING

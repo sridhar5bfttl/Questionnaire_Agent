@@ -74,8 +74,8 @@ render_chat_history(get_messages())
 
 # --- USER INPUT HANDLING ---
 
-# 1. Handling Starter Prompts (Greeting Phase Only)
-if st.session_state.phase == ChatPhase.GREETING:
+# 1. Handling Starter Prompts (Greeting Phase & No Messages Only)
+if st.session_state.phase == ChatPhase.GREETING and not st.session_state.messages:
     selected_prompt = render_starter_prompts()
     if selected_prompt:
         add_message("user", selected_prompt)
