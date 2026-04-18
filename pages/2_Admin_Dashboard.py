@@ -71,20 +71,25 @@ with tab2:
                 c1, c2 = st.columns([3, 1])
                 with c1:
                     st.write(f"**Requested At:** {req['requested_at']}")
-                    st.write(f"**Justification Drafted by Agent:**")
+                    st.write(f"**Request Type:** {req.get('request_type', 'EXTENSION')}")
+                    st.write(f"**Desired Session Limit:** {req.get('requested_limit', 10)}")
+                    st.write(f"**Justification:**")
                     st.info(req['justification'])
                 
                 with c2:
                     if req['status'] == 'PENDING':
                         new_notes = st.text_area("Admin Notes", key=f"notes_{req['id']}")
-                        # New Limit Controls
-                        new_limit = st.number_input("Grant Session Limit", min_value=10, max_value=100, value=20, key=f"limit_{req['id']}")
-                        new_daily = st.number_input("Grant Daily Limit", min_value=2, max_value=20, value=5, key=f"daily_{req['id']}")
+                        # New Limit Controls - pre-fill with requested value
+                        suggested_limit = req.get('requested_limit', 20)
+                        new_limit = st.number_input("Grant Session Limit", min_value=10, max_value=200, value=max(10, suggested_limit), key=f"limit_{req['id']}")
+                        new_daily = st.number_input("Grant Daily Limit", min_value=2, max_value=50, value=5, key=f"daily_{req['id']}")
                         
                         col_a, col_r = st.columns(2)
                         if col_a.button("Approve", key=f"app_{req['id']}"):
                             update_quota_request(req['id'], 'APPROVED', new_notes)
                             set_user_quota(req['user_id'], new_limit, new_daily)
+                            if req.get('request_type') == 'SIGNUP':
+                                update_user_status(req['user_id'], 'APPROVED')
                             st.success("Approved!")
                             st.rerun()
                         if col_r.button("Reject", key=f"rej_{req['id']}", type="primary"):

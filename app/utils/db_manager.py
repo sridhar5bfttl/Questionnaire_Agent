@@ -69,7 +69,9 @@ def init_db():
             is_guest INTEGER DEFAULT 1,
             requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'PENDING',
+            request_type TEXT DEFAULT 'EXTENSION', -- 'SIGNUP' or 'EXTENSION'
             justification TEXT,
+            requested_limit INTEGER DEFAULT 10,
             decision_at DATETIME,
             admin_notes TEXT
         )
@@ -133,6 +135,13 @@ def init_db():
         cursor.execute("SELECT burst_number FROM messages LIMIT 1")
     except sqlite3.OperationalError:
         cursor.execute("ALTER TABLE messages ADD COLUMN burst_number INTEGER DEFAULT 1")
+
+    # Migration for quota_requests
+    try:
+        cursor.execute("SELECT request_type FROM quota_requests LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE quota_requests ADD COLUMN request_type TEXT DEFAULT 'EXTENSION'")
+        cursor.execute("ALTER TABLE quota_requests ADD COLUMN requested_limit INTEGER DEFAULT 10")
 
     conn.commit()
     conn.close()
@@ -454,14 +463,14 @@ def log_activity(user_id, action, metadata=""):
     conn.commit()
     conn.close()
 
-def create_quota_request(user_id, is_guest, justification):
-    """Submit a new quota extension request."""
+def create_quota_request(user_id, is_guest, justification, request_type='EXTENSION', requested_limit=10):
+    """Submit a new quota or access request."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO quota_requests (user_id, is_guest, justification)
-        VALUES (?, ?, ?)
-    ''', (user_id, int(is_guest), justification))
+        INSERT INTO quota_requests (user_id, is_guest, request_type, justification, requested_limit)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (user_id, int(is_guest), request_type, justification, requested_limit))
     conn.commit()
     conn.close()
 

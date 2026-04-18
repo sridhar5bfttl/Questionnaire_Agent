@@ -112,10 +112,16 @@ with st.sidebar:
                 st.success(f"Welcome back, {email}!")
                 st.rerun()
             elif status == "PENDING":
-                st.warning("⏳ **Request Received**: Your registration is pending administrator review. You will be able to login once approved.")
+                st.warning("⏳ **Request Received**: Your registration is pending administrator review.")
+                if st.button("📝 Complete Access Form"):
+                    st.session_state.request_email = email
+                    st.switch_page("pages/3_Request_Access.py")
                 log_activity(email, "SIGNUP_ATTEMPT")
             elif status == "REJECTED":
                 st.error("🚫 **Access Denied**: Your account registration has been rejected.")
+                if st.button("🙋 Appeal / Re-request"):
+                    st.session_state.request_email = email
+                    st.switch_page("pages/3_Request_Access.py")
     else:
         st.success(f"Logged in as: **{st.session_state.user_id}**")
         if st.button("Logout"):
@@ -189,36 +195,12 @@ if st.session_state.is_guest:
         
         if limit_reached:
             quota_blocked = True
-            st.info("💡 Need more quota? Our AI agent can generate an extension request for you.")
+            st.warning("⚠️ **Capacity Reached**: Your current quota has been exhausted.")
+            st.info("💡 To continue your strategic analysis, please visit our Access & Quota Portal to request an extension or register your account.")
             
-            # Check for existing pending request
-            all_reqs = get_all_quota_requests()
-            user_reqs = [r for r in all_reqs if r['user_id'] == st.session_state.user_id and r['status'] == 'PENDING']
-            
-            if user_reqs:
-                st.warning("⏳ You have a pending request. Please wait for the admin to review it.")
-            else:
-                user_email = st.text_input("Confirm your Email ID for the request", value="" if st.session_state.user_id == "guest_default" else st.session_state.user_id)
-                if user_email and st.button("🚀 Draft & Send Quota Extension Request"):
-                    with st.spinner("Analyzing your interaction score and drafting request..."):
-                        # Calculate current user merit
-                        all_sessions = get_all_sessions()
-                        user_sessions = [s for s in all_sessions if s['user_id'] == st.session_state.user_id]
-                        avg_score = sum([s['audit_score'] for s in user_sessions]) / len(user_sessions) if user_sessions else 0
-                        
-                        settings = get_system_settings()
-                        min_threshold = int(settings.get('audit_threshold', AUDIT_THRESHOLD))
-                        
-                        if avg_score < min_threshold and len(user_sessions) > 0:
-                            st.error(f"❌ **Extension Denied**: Your current interaction score ({avg_score:.1f}/10) is below the required threshold ({min_threshold}). Please focus on providing more specific use case details in your next available session.")
-                            log_activity(st.session_state.user_id, "QUOTA_REQUEST_DENIED_AUTO", f"Score: {avg_score}")
-                        else:
-                            qa = QuotaAgent()
-                            justification = qa.generate_justification(user_email, st.session_state.messages, stats)
-                            create_quota_request(user_email, True, justification)
-                            log_activity(user_email, "QUOTA_REQUEST_SUBMITTED")
-                            st.success("✅ **Request Sent!** The administrator has been notified. You will receive an email update once reviewed.")
-                            st.balloons()
+            if st.button("🚀 Go to Access & Quota Portal"):
+                st.session_state.request_email = st.session_state.user_id
+                st.switch_page("pages/3_Request_Access.py")
     
     # 2. Token Limit Check
     total_tokens = st.session_state.total_input_tokens + st.session_state.total_output_tokens
