@@ -133,6 +133,11 @@ st.markdown("""
 Welcome! I am your technical strategy partner. I help you navigate through complex business requirements to identify the perfect technical architecture—whether it's **RPA, ML, DL, NLP, or GenAI**.
 """)
 
+# Display Active Topic Title if Resumed
+if st.session_state.get("current_title"):
+    st.subheader(f"📂 Topic: {st.session_state.current_title}")
+    st.divider()
+
 # Initialize LLM Client
 llm = LLMClient()
 
