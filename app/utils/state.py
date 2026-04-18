@@ -37,6 +37,9 @@ def init_state():
     
     if "is_guest" not in st.session_state:
         st.session_state.is_guest = True
+        
+    if "current_burst_number" not in st.session_state:
+        st.session_state.current_burst_number = 1
 
     if "user_data" not in st.session_state:
         st.session_state.user_data = {
@@ -59,8 +62,9 @@ def add_message(role: str, content: str):
     st.session_state.messages.append({
         "role": role,
         "content": content,
-        "timestamp": now.strftime("%H:%M:%S.%f")[:-3], # HH:MM:SS.mmm
-        "raw_timestamp": now.strftime("%Y-%m-%d %H:%M:%S.%f")
+        "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "raw_timestamp": now.strftime("%Y-%m-%d %H:%M:%S.%f"),
+        "burst_number": st.session_state.current_burst_number
     })
     # Any new message makes this session "dirty" — needs saving on exit/reset
     st.session_state.session_saved = False
@@ -75,6 +79,13 @@ def load_session_state(session_id, messages, metadata):
     st.session_state.current_title = metadata.get("title")
     st.session_state.user_id = metadata.get("user_id", "admin")
     st.session_state.is_guest = bool(metadata.get("is_guest", 0))
+    
+    # Determine the next burst number for new messages
+    if messages:
+        max_burst = max((msg.get("burst_number", 1) for msg in messages), default=1)
+        st.session_state.current_burst_number = max_burst + 1
+    else:
+        st.session_state.current_burst_number = 1
     # When loading from DB, messages will have both 'timestamp' (UI) and 'raw_timestamp' (DB)
     for msg in messages:
         if "timestamp" not in msg:

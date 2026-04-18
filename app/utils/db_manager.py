@@ -38,6 +38,7 @@ def init_db():
             role TEXT,
             content TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            burst_number INTEGER DEFAULT 1,
             FOREIGN KEY (session_id) REFERENCES sessions (id)
         )
     ''')
@@ -67,6 +68,11 @@ def init_db():
         cursor.execute("SELECT session_number FROM sessions LIMIT 1")
     except sqlite3.OperationalError:
         cursor.execute("ALTER TABLE sessions ADD COLUMN session_number INTEGER DEFAULT 1")
+
+    try:
+        cursor.execute("SELECT burst_number FROM messages LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE messages ADD COLUMN burst_number INTEGER DEFAULT 1")
 
     conn.commit()
     conn.close()
@@ -158,16 +164,14 @@ def save_chat_session(messages, title="New Conversation", summary=None, input_to
     
     # 3. Insert each message (new or expanded history)
     for msg in messages:
-        if "raw_timestamp" in msg and msg["raw_timestamp"]:
-            cursor.execute(
-                'INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)',
-                (session_id, msg["role"], msg["content"], msg["raw_timestamp"])
-            )
-        else:
-            cursor.execute(
-                'INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)',
-                (session_id, msg["role"], msg["content"])
-            )
+        # Check if burst_number is already in the msg object, default to 1
+        b_num = msg.get("burst_number", 1)
+        ts = msg.get("raw_timestamp") or msg.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        cursor.execute('''
+            INSERT INTO messages (session_id, role, content, timestamp, burst_number)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (session_id, msg['role'], msg['content'], ts, b_num))
     
     conn.commit()
     conn.close()
@@ -261,7 +265,7 @@ def get_session_messages(session_id):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute('SELECT role, content, timestamp FROM messages WHERE session_id = ? ORDER BY timestamp ASC', (session_id,))
+    cursor.execute('SELECT role, content, timestamp, burst_number FROM messages WHERE session_id = ? ORDER BY id ASC', (session_id,))
     rows = cursor.fetchall()
     conn.close()
     result = []
