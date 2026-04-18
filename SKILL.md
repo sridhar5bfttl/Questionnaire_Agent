@@ -52,7 +52,13 @@ This is the core persistence and UX innovation. The end-to-end flow is:
 - **Dictionary Conversion**: Always convert `sqlite3.Row` to `dict` in fetch layer.
 - **Soft Delete**: Use `is_active` flag (1/0) to hide without deleting.
 
-## 6. Cost Tracking (The GPT-5.1 Pattern)
+## 6. Full-Text Keyword Search Pattern
+The `search_sessions(query)` function uses a two-pass SQL approach:
+1. **Pass 1 (Session-level)**: LIKE search on `sessions.title` and `sessions.audit_feedback`. Returns a formatted `match_snippet` to show context.
+2. **Pass 2 (Message-level)**: LIKE search on `messages.content` via a JOIN, extracting a 80-character window around the match.
+3. **Deduplication**: Results from both passes are merged and deduplicated by `session_id`, with session-level matches taking priority.
+- The UI displays a `💡 Match:` snippet below the selected session to give immediate context before resuming.
+
 - Capture `token_usage` from LangChain response metadata.
 - Accumulate in session state: `total_input_tokens` and `total_output_tokens`.
 - Apply hypothetical pricing in the Save process:

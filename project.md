@@ -51,9 +51,10 @@
 ### History Dashboard & Reporting
 1. Dedicated multi-page interface (`pages/1_History_Dashboard.py`).
 2. **Global Analytics**: Token Usage Timelines and Cumulative Budget Utilization (via Plotly).
-3. **Session Review**: Drill-down with full transcripts and AI audit feedback.
+3. **Session Review**: Drill-down with full transcripts (with per-message timestamps) and AI audit feedback.
 4. **Professional Export**: Consolidated PDF reports including transcript, audit, and resource usage.
 5. **Session Resumption**: "🚀 Resume Conversation" button to pick up any session exactly where it left off.
+6. **Keyword Search**: Full-text search across session titles, conversation content, and audit feedback — with match snippets for quick context.
 
 ---
 

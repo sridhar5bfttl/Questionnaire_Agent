@@ -113,6 +113,53 @@ def get_all_sessions():
     conn.close()
     return [dict(row) for row in rows]
 
+def search_sessions(query):
+    """
+    Search for sessions matching a keyword across titles, message content, and audit feedback.
+    Returns a list of matching session dicts with an additional 'match_snippet' field.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    like_query = f"%{query}%"
+
+    cursor.execute('''
+        SELECT DISTINCT s.*, 
+            CASE
+                WHEN s.title LIKE ? THEN 'Title: ' || s.title
+                WHEN s.audit_feedback LIKE ? THEN 'Audit: ' || SUBSTR(s.audit_feedback, 1, 80)
+                ELSE NULL
+            END as match_snippet
+        FROM sessions s
+        WHERE s.is_active = 1 AND (
+            s.title LIKE ?
+            OR s.audit_feedback LIKE ?
+        )
+        ORDER BY s.timestamp DESC
+    ''', (like_query, like_query, like_query, like_query))
+    session_rows = [dict(r) for r in cursor.fetchall()]
+
+    # Also search in messages content
+    cursor.execute('''
+        SELECT DISTINCT s.*, 
+            'Message: ' || SUBSTR(m.content, MAX(1, INSTR(LOWER(m.content), LOWER(?)) - 30), 80) as match_snippet
+        FROM sessions s
+        JOIN messages m ON m.session_id = s.id
+        WHERE s.is_active = 1 AND m.content LIKE ?
+        ORDER BY s.timestamp DESC
+    ''', (query, like_query))
+    msg_rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+
+    # Merge, deduplicate by session id, prefer session-level matches
+    seen = {s['id'] for s in session_rows}
+    for row in msg_rows:
+        if row['id'] not in seen:
+            session_rows.append(row)
+            seen.add(row['id'])
+
+    return session_rows
+
 def get_session_messages(session_id):
     """Retrieve all messages for a specific session including formatted timestamps."""
     conn = sqlite3.connect(DB_PATH)

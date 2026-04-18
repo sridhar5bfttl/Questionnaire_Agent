@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import pandas as pd
 import plotly.express as px
-from app.utils.db_manager import get_all_sessions, get_session_messages, get_session_assessment, hide_session, get_session_duration
+from app.utils.db_manager import get_all_sessions, get_session_messages, get_session_assessment, hide_session, get_session_duration, search_sessions
 from app.utils.pdf_generator import generate_assessment_pdf
 
 st.set_page_config(page_title="History Dashboard", page_icon="📜", layout="wide")
@@ -33,15 +33,44 @@ if not sessions:
     st.info("No saved conversations found. Start a chat and save it to see it here!")
 else:
     # Sidebar Session Selector
-    st.sidebar.header("Select a Session")
-    
+    st.sidebar.header("Session Navigator")
+
+    # --- KEYWORD SEARCH ---
+    search_query = st.sidebar.text_input(
+        "🔍 Search Sessions",
+        placeholder="e.g. RPA, invoice, GenAI...",
+        help="Search across session titles, messages, and audit feedback."
+    )
+
+    if search_query.strip():
+        matched_sessions = search_sessions(search_query.strip())
+        if not matched_sessions:
+            st.sidebar.warning(f"No sessions found for '{search_query}'.")
+            display_sessions = []
+        else:
+            st.sidebar.success(f"Found {len(matched_sessions)} matching session(s)")
+            display_sessions = matched_sessions
+    else:
+        display_sessions = sessions
+        matched_sessions = []
+
+    if not display_sessions:
+        st.info("No sessions match your search. Try a different keyword.")
+        st.stop()
+
     # Format session list for display - show title + formatted date
     session_options = {
-        f"{s['title']} — {s['timestamp'][:10]}": s['id'] 
-        for s in sessions
+        f"{s['title']} — {s['timestamp'][:10]}": s['id']
+        for s in display_sessions
     }
     selected_label = st.sidebar.radio("View Details For:", list(session_options.keys()))
     selected_session_id = session_options[selected_label]
+
+    # Show match snippet if in search mode
+    if search_query.strip():
+        selected_match = next((s for s in display_sessions if s['id'] == selected_session_id), None)
+        if selected_match and selected_match.get("match_snippet"):
+            st.sidebar.caption(f"💡 **Match**: {selected_match['match_snippet'][:100]}...")
 
     st.sidebar.divider()
     if st.sidebar.button("🗑️ Hide from List", width="stretch"):
