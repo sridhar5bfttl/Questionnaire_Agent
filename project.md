@@ -54,7 +54,7 @@
 4. **Upsert Logic**: When a resumed session is saved, it updates the existing record (no duplicates).
 
 ### Dashboards & Reporting
-1. **Admin Dashboard**: `pages/2_Admin_Dashboard.py` provides Global User Intelligence, tracking new registrants, approval statuses, and monitoring daily/total session limits via an interactive Dataframe.
+1. **Admin Dashboard**: `pages/admin.py` provides Global User Intelligence, tracking new registrants, approval statuses, and monitoring daily/total session limits via an interactive Dataframe.
 2. **History Dashboard**: Dedicated multi-page interface (`pages/1_History_Dashboard.py`).
 2. **Global Analytics**: Token Usage Timelines and Cumulative Budget Utilization (via Plotly).
 3. **Session Review**: Drill-down with full transcripts (featuring **high-resolution timestamps** down to milliseconds) and AI audit feedback.

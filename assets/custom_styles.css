@@ -66,3 +66,11 @@
     border-bottom: 3px solid var(--primary-color) !important;
     color: white !important;
 }
+
+/* Hide specific pages from sidebar */
+[data-testid="stSidebarNav"] a[href$="admin"],
+[data-testid="stSidebarNav"] a[href$="admin/"],
+[data-testid="stSidebarNav"] a[href$="requestaccess"],
+[data-testid="stSidebarNav"] a[href$="requestaccess/"] {
+    display: none !important;
+}

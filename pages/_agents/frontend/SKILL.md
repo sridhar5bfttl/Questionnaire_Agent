@@ -97,7 +97,7 @@ To solve the problem of inflated duration in resumed sessions, the `get_session_
 - **Immediate State Hydration**: Approved users who login skip the chat history reload initially until they select a session; their state is dynamically updated to display their "Personal Usage Dashboard" in the sidebar instantly.
 
 ## 13. Registration & Quota Extension Pattern
-- **Hidden Portals**: The Request Access portal is prefixed with an underscore (`pages/_Request_Access.py`) to hide it from the Streamlit sidebar. It is only accessible programmatically via `st.switch_page("pages/_Request_Access.py")` when a user attempts a new signup or hits a quota threshold.
+- **Hidden Portals**: The Request Access portal is named `pages/requestaccess.py`. It is hidden from the Streamlit sidebar using CSS injection in `assets/custom_styles.css`. It is accessible programmatically via `st.switch_page("pages/requestaccess.py")` or directly via the `/requestaccess` URL.
 - **Quota Overrides**: Global fallbacks (e.g., `GUEST_MAX_SESSIONS`) are gracefully overridden by individual user records queried from the `user_quotas` table during the login sequence.
 
 ## 14. Admin Governance & Analytics

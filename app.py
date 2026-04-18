@@ -114,7 +114,7 @@ with st.sidebar:
                     st.rerun()
                 else:
                     st.session_state.request_email = email
-                    st.switch_page("pages/_Request_Access.py")
+                    st.switch_page("pages/requestaccess.py")
     else:
         st.success(f"Logged in as: **{st.session_state.user_id}**")
         
@@ -139,7 +139,7 @@ with st.sidebar:
             st.progress(progress)
             
             if st.button("Request More Quota"):
-                st.switch_page("pages/_Request_Access.py")
+                st.switch_page("pages/requestaccess.py")
         
         if st.button("Logout"):
             trigger_auto_save()
@@ -192,7 +192,7 @@ if st.session_state.is_guest and not st.session_state.bypass_login:
                 else:
                     # Handle PENDING or REJECTED
                     st.session_state.request_email = login_email
-                    st.switch_page("pages/_Request_Access.py")
+                    st.switch_page("pages/requestaccess.py")
             else:
                 st.error("Email required.")
 
@@ -205,7 +205,7 @@ if st.session_state.is_guest and not st.session_state.bypass_login:
                     st.warning(f"Account for {signup_email} already exists. Please use the Login tab.")
                 else:
                     st.session_state.request_email = signup_email
-                    st.switch_page("pages/_Request_Access.py")
+                    st.switch_page("pages/requestaccess.py")
             else:
                 st.error("Email required.")
 
@@ -264,7 +264,7 @@ if st.session_state.is_guest:
             
             if st.button("🚀 Go to Access & Quota Portal"):
                 st.session_state.request_email = st.session_state.user_id
-                st.switch_page("pages/_Request_Access.py")
+                st.switch_page("pages/requestaccess.py")
     
     # 2. Token Limit Check
     total_tokens = st.session_state.total_input_tokens + st.session_state.total_output_tokens

@@ -30,8 +30,8 @@ Questionnaire_Agent/
 ├── app.py                      # Main Streamlit chat interface
 ├── pages/
 │   ├── 1_History_Dashboard.py # Analytics & history viewer
-│   ├── 2_Admin_Dashboard.py   # Global user intelligence & quota approvals
-│   └── _Request_Access.py     # Hidden Access & Quota portal
+│   ├── admin.py               # Global user intelligence & quota approvals
+│   └── requestaccess.py       # Hidden Access & Quota portal
 ├── app/
 │   ├── components/             # Reusable UI components
 │   ├── prompts/                # Agent system prompt templates
