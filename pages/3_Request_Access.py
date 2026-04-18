@@ -22,6 +22,22 @@ current_user = st.session_state.get("user_id", "guest_default")
 # If coming from a failed login or quota block
 target_email = st.session_state.get("request_email", "" if current_user == "guest_default" else current_user)
 
+# Status Check Logic
+if target_email:
+    status = get_user_status(target_email)
+    all_reqs = get_all_quota_requests()
+    pending = [r for r in all_reqs if r['user_id'] == target_email and r['status'] == 'PENDING']
+    
+    if status == "APPROVED" and not is_logged_in:
+        st.success(f"✅ **Account Approved**: {target_email} is already registered. Please go back and login.")
+        if st.button("Back to Login"): st.switch_page("app.py")
+        st.stop()
+    elif pending:
+        st.warning(f"⏳ **Status: Pending Review**")
+        st.info(f"Your {pending[0]['request_type']} request for **{target_email}** is currently being reviewed by an administrator. You will be able to access the platform once your account is activated.")
+        if st.button("Back to App"): st.switch_page("app.py")
+        st.stop()
+
 with st.form("request_form"):
     st.subheader("📋 Request Details")
     

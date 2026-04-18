@@ -111,17 +111,10 @@ with st.sidebar:
                 log_activity(email, "LOGIN")
                 st.success(f"Welcome back, {email}!")
                 st.rerun()
-            elif status == "PENDING":
-                st.warning("⏳ **Request Received**: Your registration is pending administrator review.")
-                if st.button("📝 Complete Access Form"):
-                    st.session_state.request_email = email
-                    st.switch_page("pages/3_Request_Access.py")
-                log_activity(email, "SIGNUP_ATTEMPT")
-            elif status == "REJECTED":
-                st.error("🚫 **Access Denied**: Your account registration has been rejected.")
-                if st.button("🙋 Appeal / Re-request"):
-                    st.session_state.request_email = email
-                    st.switch_page("pages/3_Request_Access.py")
+            else:
+                # Automatic redirection for NEW or PENDING users
+                st.session_state.request_email = email
+                st.switch_page("pages/3_Request_Access.py")
     else:
         st.success(f"Logged in as: **{st.session_state.user_id}**")
         if st.button("Logout"):
