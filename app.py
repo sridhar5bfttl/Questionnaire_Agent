@@ -20,6 +20,9 @@ from app.config import (
 # Page Configuration
 st.set_page_config(page_title="Vantage Point AI", page_icon="🎯", layout="wide")
 
+from app.components.navigation import sidebar_nav
+sidebar_nav()
+
 # Initialize Session State, Database & Auditor
 init_state()
 init_db()

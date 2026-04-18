@@ -10,6 +10,9 @@ init_state()
 
 st.set_page_config(page_title="History Dashboard", page_icon="📜", layout="wide")
 
+from app.components.navigation import sidebar_nav
+sidebar_nav()
+
 # Custom CSS Injection
 def load_css(file_name):
     with open(file_name) as f:

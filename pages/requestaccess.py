@@ -9,6 +9,9 @@ from app.utils.quota_agent import QuotaAgent
 
 st.set_page_config(page_title="Vantage Point AI - Access Portal", page_icon="🚀", layout="centered")
 
+from app.components.navigation import sidebar_nav
+sidebar_nav()
+
 st.title("🚀 Strategic Access & Quota Portal")
 st.markdown("""
 Welcome to the Vantage Point AI Access Center. Use this form to either **request a new account approval** 

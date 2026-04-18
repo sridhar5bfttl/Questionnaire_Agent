@@ -9,6 +9,9 @@ This document defines the skills and implementation patterns required to maintai
 - **Dynamic Elements**: `st.chat_message` for history, `st.divider()` and `st.columns` for phase-specific UI (Save/Deep Dive buttons).
 - **Interactive Analytics**: Plotly charts in the Dashboard for token timelines and cumulative cost visualization.
 - **Starter Prompt Guard**: Starter prompts render ONLY if the conversation is empty (`not st.session_state.messages`). This is the critical guard that enables session resumption without showing irrelevant greetings.
+## 1.1 Sidebar
+- **Sidebar**: `st.sidebar` is used for the main navigation and user authentication. 
+It should always show app and History dashboard only (not admin and request access)
 
 ## 2. Agent Orchestration (Multi-Agent Pattern)
 The application uses two distinct agent roles:

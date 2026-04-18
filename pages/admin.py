@@ -15,6 +15,9 @@ import plotly.express as px
 
 st.set_page_config(page_title="Vantage Point Admin", page_icon="🛡️", layout="wide")
 
+from app.components.navigation import sidebar_nav
+sidebar_nav()
+
 # --- AUTHENTICATION ---
 if "admin_logged_in" not in st.session_state:
     st.session_state.admin_logged_in = False
