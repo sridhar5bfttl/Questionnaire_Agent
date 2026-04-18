@@ -61,18 +61,19 @@ def trigger_auto_save():
                     st.session_state.total_output_tokens
                 )
                 
-                # 5. Persist
+                # 5. Persist (Force NEW session on auto-save to implement leg-based numbering)
+                # This ensures that Resuming #1 and then Resetting creates a new #2 entry
                 session_id = save_chat_session(
                     st.session_state.messages, 
                     title=title,
-                    summary="Auto-Save (Triggered)",
+                    summary="Auto-Save (Snapshot)",
                     input_tokens=st.session_state.total_input_tokens,
                     output_tokens=st.session_state.total_output_tokens,
                     total_cost=cost,
                     audit_score=score,
                     audit_feedback=feedback,
                     current_phase=st.session_state.phase.name,
-                    session_id=st.session_state.current_session_id,
+                    session_id=None, # Force new record
                     user_id=st.session_state.user_id,
                     is_guest=int(st.session_state.is_guest)
                 )

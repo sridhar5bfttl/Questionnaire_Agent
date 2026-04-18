@@ -138,84 +138,111 @@ else:
 
     st.divider()
 
-    # Detailed Session View
-    selected_session = next(s for s in sessions if s['id'] == selected_session_id)
-    
-    # Pre-fetch all data for the common download button
-    messages_history = get_session_messages(selected_session_id)
-    assessment = get_session_assessment(selected_session_id)
-    
-    # 2. Section Header, Timestamps & Global Download
-    duration_data = get_session_duration(selected_session_id)
-    scol1, scol2 = st.columns([3, 1])
-    with scol1:
-        s_num = selected_session.get('session_number', 1)
-        st.header(f"Session #{s_num}: {selected_session['title']}")
-        # Timestamp & Duration metrics row
-        m1, m2, m3 = st.columns(3)
-        m1.metric("📅 Started At", duration_data["started_at"])
-        m2.metric("🏁 Last Message", duration_data["ended_at"])
-        m3.metric("⏱️ Duration", duration_data["duration_formatted"])
-    with scol2:
-        if assessment:
-            usage_data = {
-                'input_tokens': selected_session['input_tokens'],
-                'output_tokens': selected_session['output_tokens'],
-                'total_cost': selected_session['total_cost']
-            }
-            pdf_bytes = generate_assessment_pdf(
-                selected_session['title'], 
-                assessment, 
-                selected_session['audit_score'],
-                selected_session['audit_feedback'],
-                messages_history,
-                usage_data
-            )
-            st.download_button(
-                label="📄 Download Full Report",
-                data=bytes(pdf_bytes),
-                file_name=f"VantagePointReport_{selected_session['id']}.pdf",
-                mime="application/pdf",
-                width="stretch"
-            )
+    # --- TABBED VIEW: FOCUSED VS CHRONOLOGICAL ---
+    main_tab1, main_tab2 = st.tabs(["🎯 Detailed Explorer", "📜 Full Audit Trail"])
 
-    tab1, tab2, tab3 = st.tabs(["Conversation Transcript", "Technical Recommendation", "Audit Details"])
-
-    with tab1:
-        messages = get_session_messages(selected_session_id)
-        if not messages:
-            st.info("No messages found for this session.")
-        else:
-            with st.expander("📖 View Full Conversation Transcript", expanded=False):
-                for msg in messages:
-                    with st.chat_message(msg['role']):
-                        st.markdown(msg['content'])
-                        # Show timestamp caption with role label and time
-                        ts = msg.get("timestamp", "")
-                        if ts:
-                            label = "You" if msg["role"] == "user" else "Vantage Point AI"
-                            st.caption(f"🕐 {label} · {ts}")
-
-    with tab2:
-        assessment = get_session_assessment(selected_session_id)
-        if assessment:
-            st.subheader(f"Classification: {assessment['classification']}")
-            st.progress(assessment['confidence_score'] / 100, text=f"Confidence: {assessment['confidence_score']}%")
-            st.markdown("### Rationale")
-            st.info(assessment['rationale'])
-        else:
-            st.warning("No technical assessment was recorded for this session.")
-
-    with tab3:
-        st.subheader("AI Auditor Feedback")
-        c1, c2 = st.columns([1, 3])
-        with c1:
-            st.metric("Session Score", f"{selected_session['audit_score']}/10")
-        with c2:
-            st.markdown(f"**Feedback:** {selected_session['audit_feedback']}")
+    with main_tab2:
+        st.subheader("Continuous Diagnostic Log")
+        st.caption("All sessions for this user, stacked chronologically.")
         
-        st.divider()
-        st.subheader("Resource Usage")
-        st.write(f"**Input Tokens:** {selected_session['input_tokens']}")
-        st.write(f"**Output Tokens:** {selected_session['output_tokens']}")
-        st.write(f"**Cost Est. (GPT-5.1):** ${selected_session['total_cost']:.6f}")
+        # Sort sessions by number ascending for the trail
+        trail_sessions = sorted(sessions, key=lambda x: x.get('session_number', 0))
+        
+        for s in trail_sessions:
+            s_num = s.get('session_number', 1)
+            with st.expander(f"Session #{s_num}: {s['title']} ({s['timestamp'][:16]})", expanded=False):
+                s_msgs = get_session_messages(s['id'])
+                for m in s_msgs:
+                    with st.chat_message(m['role']):
+                        st.markdown(m['content'])
+                        st.caption(f"🕐 {m.get('timestamp', 'N/A')}")
+                
+                # Show audit summary mini-card
+                st.markdown("---")
+                audit_cols = st.columns(3)
+                audit_cols[0].metric("Score", f"{s['audit_score']}/10")
+                audit_cols[1].metric("Cost", f"${s['total_cost']:.4f}")
+                audit_cols[2].write(f"**Audit Key:** {s['id']}")
+
+    with main_tab1:
+        # Detailed Session View (Existing logic)
+        selected_session = next(s for s in sessions if s['id'] == selected_session_id)
+        
+        # Pre-fetch all data for the common download button
+        messages_history = get_session_messages(selected_session_id)
+        assessment = get_session_assessment(selected_session_id)
+        
+        # 2. Section Header, Timestamps & Global Download
+        duration_data = get_session_duration(selected_session_id)
+        scol1, scol2 = st.columns([3, 1])
+        with scol1:
+            s_num = selected_session.get('session_number', 1)
+            st.header(f"Session #{s_num}: {selected_session['title']}")
+            # Timestamp & Duration metrics row
+            m1, m2, m3 = st.columns(3)
+            m1.metric("📅 Started At", duration_data["started_at"])
+            m2.metric("🏁 Last Message", duration_data["ended_at"])
+            m3.metric("⏱️ Duration", duration_data["duration_formatted"])
+        with scol2:
+            if assessment:
+                usage_data = {
+                    'input_tokens': selected_session['input_tokens'],
+                    'output_tokens': selected_session['output_tokens'],
+                    'total_cost': selected_session['total_cost']
+                }
+                pdf_bytes = generate_assessment_pdf(
+                    selected_session['title'], 
+                    assessment, 
+                    selected_session['audit_score'],
+                    selected_session['audit_feedback'],
+                    messages_history,
+                    usage_data
+                )
+                st.download_button(
+                    label="📄 Download Full Report",
+                    data=bytes(pdf_bytes),
+                    file_name=f"VantagePointReport_{selected_session['id']}.pdf",
+                    mime="application/pdf",
+                    width="stretch"
+                )
+
+        tab1, tab2, tab3 = st.tabs(["Conversation Transcript", "Technical Recommendation", "Audit Details"])
+
+        with tab1:
+            messages = get_session_messages(selected_session_id)
+            if not messages:
+                st.info("No messages found for this session.")
+            else:
+                with st.expander("📖 View Full Conversation Transcript", expanded=False):
+                    for msg in messages:
+                        with st.chat_message(msg['role']):
+                            st.markdown(msg['content'])
+                            # Show timestamp caption with role label and time
+                            ts = msg.get("timestamp", "")
+                            if ts:
+                                label = "You" if msg["role"] == "user" else "Vantage Point AI"
+                                st.caption(f"🕐 {label} · {ts}")
+
+        with tab2:
+            assessment = get_session_assessment(selected_session_id)
+            if assessment:
+                st.subheader(f"Classification: {assessment['classification']}")
+                st.progress(assessment['confidence_score'] / 100, text=f"Confidence: {assessment['confidence_score']}%")
+                st.markdown("### Rationale")
+                st.info(assessment['rationale'])
+            else:
+                st.warning("No technical assessment was recorded for this session.")
+
+        with tab3:
+            st.subheader("AI Auditor Feedback")
+            c1, c2 = st.columns([1, 3])
+            with c1:
+                st.metric("Session Score", f"{selected_session['audit_score']}/10")
+            with c2:
+                st.markdown(f"**Feedback:** {selected_session['audit_feedback']}")
+            
+            st.divider()
+            st.subheader("Resource Usage")
+            st.write(f"**Input Tokens:** {selected_session['input_tokens']}")
+            st.write(f"**Output Tokens:** {selected_session['output_tokens']}")
+            st.write(f"**Cost Est. (GPT-5.1):** ${selected_session['total_cost']:.6f}")
