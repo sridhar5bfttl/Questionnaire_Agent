@@ -25,7 +25,8 @@ def init_db():
             is_active INTEGER DEFAULT 1,
             current_phase TEXT DEFAULT 'GREETING',
             user_id TEXT DEFAULT 'admin',
-            is_guest INTEGER DEFAULT 0
+            is_guest INTEGER DEFAULT 0,
+            session_number INTEGER DEFAULT 1
         )
     ''')
 
@@ -61,6 +62,11 @@ def init_db():
     except sqlite3.OperationalError:
         cursor.execute("ALTER TABLE sessions ADD COLUMN user_id TEXT DEFAULT 'admin'")
         cursor.execute("ALTER TABLE sessions ADD COLUMN is_guest INTEGER DEFAULT 0")
+    
+    try:
+        cursor.execute("SELECT session_number FROM sessions LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE sessions ADD COLUMN session_number INTEGER DEFAULT 1")
 
     conn.commit()
     conn.close()
@@ -138,11 +144,16 @@ def save_chat_session(messages, title="New Conversation", summary=None, input_to
         # 2. Clear old messages for this session to avoid duplicates
         cursor.execute('DELETE FROM messages WHERE session_id = ?', (session_id,))
     else:
-        # 1. Create a new session record
+        # 1. Calculate the next session number for this user
+        cursor.execute('SELECT MAX(session_number) FROM sessions WHERE user_id = ?', (user_id,))
+        max_num = cursor.fetchone()[0]
+        next_num = (max_num + 1) if max_num is not None else 1
+
+        # 2. Create a new session record
         cursor.execute('''
-            INSERT INTO sessions (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase, user_id, is_guest)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase, user_id, is_guest))
+            INSERT INTO sessions (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase, user_id, is_guest, session_number)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase, user_id, is_guest, next_num))
         session_id = cursor.lastrowid
     
     # 3. Insert each message (new or expanded history)

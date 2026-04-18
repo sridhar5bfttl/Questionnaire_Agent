@@ -30,42 +30,6 @@ if "resume_session_id" in st.session_state and st.session_state.resume_session_i
     del st.session_state.resume_session_id
     st.toast(f"Resumed session: {session_metadata.get('title', 'Unknown')}")
 
-# --- API KEY GUARD ---
-# Check prioritized order: Secrets -> Env -> SessionState
-existing_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-
-with st.sidebar:
-    st.subheader("👤 Identity")
-    if st.session_state.is_guest:
-        stats = get_user_stats(st.session_state.user_id)
-        st.info(f"**Guest Mode Active**\n\n📅 Daily: {stats['daily']}/2 sessions\n📚 Total: {stats['total']}/4 sessions")
-        email = st.text_input("Login (Email) to remove limits", placeholder="user@example.com")
-        if email and st.button("Login"):
-            st.session_state.user_id = email
-            st.session_state.is_guest = False
-            st.success(f"Welcome, {email}!")
-            st.rerun()
-    else:
-        st.success(f"Logged in as: **{st.session_state.user_id}**")
-        if st.button("Logout"):
-            trigger_auto_save()
-            st.session_state.user_id = "guest_default"
-            st.session_state.is_guest = True
-            st.rerun()
-    
-    st.divider()
-    if not existing_key:
-        st.subheader("🗝️ Configuration")
-        user_key = st.text_input("Enter OpenAI API Key", type="password", help="Required for template users if no .env or secrets are set.")
-        if user_key:
-            st.session_state.openai_api_key = user_key
-            st.success("Key applied for this session!")
-        else:
-            st.warning("Please add your OpenAI API key to start the diagnostic.")
-            st.stop()
-    else:
-        st.caption("✅ API Key active (System)")
-
 auditor = AuditorAgent()
 
 def trigger_auto_save():
@@ -116,6 +80,42 @@ def trigger_auto_save():
                 st.session_state.session_saved = True
                 return True
     return False
+
+# --- API KEY GUARD ---
+# Check prioritized order: Secrets -> Env -> SessionState
+existing_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+
+with st.sidebar:
+    st.subheader("👤 Identity")
+    if st.session_state.is_guest:
+        stats = get_user_stats(st.session_state.user_id)
+        st.info(f"**Guest Mode Active**\n\n📅 Daily: {stats['daily']}/2 sessions\n📚 Total: {stats['total']}/4 sessions")
+        email = st.text_input("Login (Email) to remove limits", placeholder="user@example.com")
+        if email and st.button("Login"):
+            st.session_state.user_id = email
+            st.session_state.is_guest = False
+            st.success(f"Welcome, {email}!")
+            st.rerun()
+    else:
+        st.success(f"Logged in as: **{st.session_state.user_id}**")
+        if st.button("Logout"):
+            trigger_auto_save()
+            st.session_state.user_id = "guest_default"
+            st.session_state.is_guest = True
+            st.rerun()
+    
+    st.divider()
+    if not existing_key:
+        st.subheader("🗝️ Configuration")
+        user_key = st.text_input("Enter OpenAI API Key", type="password", help="Required for template users if no .env or secrets are set.")
+        if user_key:
+            st.session_state.openai_api_key = user_key
+            st.success("Key applied for this session!")
+        else:
+            st.warning("Please add your OpenAI API key to start the diagnostic.")
+            st.stop()
+    else:
+        st.caption("✅ API Key active (System)")
 
 # Custom CSS Injection
 def load_css(file_name):
