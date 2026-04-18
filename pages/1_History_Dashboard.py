@@ -2,8 +2,11 @@ import streamlit as st
 import os
 import pandas as pd
 import plotly.express as px
+from app.utils.state import init_state
 from app.utils.db_manager import get_all_sessions, get_session_messages, get_session_assessment, hide_session, get_session_duration, search_sessions, update_session_title
 from app.utils.pdf_generator import generate_assessment_pdf
+
+init_state()
 
 st.set_page_config(page_title="History Dashboard", page_icon="📜", layout="wide")
 
@@ -27,7 +30,7 @@ if not existing_key and "openai_api_key" not in st.session_state:
     st.stop()
 
 # Fetch all sessions
-sessions = get_all_sessions()
+sessions = get_all_sessions(user_id=st.session_state.user_id)
 
 if not sessions:
     st.info("No saved conversations found. Start a chat and save it to see it here!")
@@ -43,7 +46,7 @@ else:
     )
 
     if search_query.strip():
-        matched_sessions = search_sessions(search_query.strip())
+        matched_sessions = search_sessions(search_query.strip(), user_id=st.session_state.user_id)
         if not matched_sessions:
             st.sidebar.warning(f"No sessions found for '{search_query}'.")
             display_sessions = []

@@ -23,7 +23,9 @@ def init_db():
             audit_score INTEGER,
             audit_feedback TEXT,
             is_active INTEGER DEFAULT 1,
-            current_phase TEXT DEFAULT 'GREETING'
+            current_phase TEXT DEFAULT 'GREETING',
+            user_id TEXT DEFAULT 'admin',
+            is_guest INTEGER DEFAULT 0
         )
     ''')
 
@@ -53,6 +55,13 @@ def init_db():
         )
     ''')
     
+    # Migration: Handle existing databases
+    try:
+        cursor.execute("SELECT user_id FROM sessions LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE sessions ADD COLUMN user_id TEXT DEFAULT 'admin'")
+        cursor.execute("ALTER TABLE sessions ADD COLUMN is_guest INTEGER DEFAULT 0")
+
     conn.commit()
     conn.close()
 
@@ -107,13 +116,13 @@ def calculate_active_duration(messages):
     total_seconds += (burst_count * 10)
     return total_seconds, burst_count
 
-def save_chat_session(messages, title="New Conversation", summary=None, input_tokens=0, output_tokens=0, total_cost=0.0, audit_score=None, audit_feedback=None, current_phase="GREETING", session_id=None):
+def save_chat_session(messages, title="New Conversation", summary=None, input_tokens=0, output_tokens=0, total_cost=0.0, audit_score=None, audit_feedback=None, current_phase="GREETING", session_id=None, user_id="admin", is_guest=0):
     """Save or update a chat session and its audit data."""
     # VERIFICATION: Calculate duration before saving
     seconds, bursts = calculate_active_duration(messages)
     m = int(seconds // 60)
     s = int(seconds % 60)
-    print(f"DEBUG: Saving Session. Calculated Active Duration: {m}m {s}s over {bursts} burst(s).")
+    print(f"DEBUG: Saving Session for {user_id}. Calculated Active Duration: {m}m {s}s over {bursts} burst(s).")
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -131,9 +140,9 @@ def save_chat_session(messages, title="New Conversation", summary=None, input_to
     else:
         # 1. Create a new session record
         cursor.execute('''
-            INSERT INTO sessions (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase))
+            INSERT INTO sessions (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase, user_id, is_guest)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase, user_id, is_guest))
         session_id = cursor.lastrowid
     
     # 3. Insert each message (new or expanded history)
@@ -166,17 +175,20 @@ def save_assessment(session_id, classification, confidence_score, rationale):
     conn.commit()
     conn.close()
 
-def get_all_sessions():
-    """Retrieve all chat sessions summary for the dashboard that are not hidden."""
+def get_all_sessions(user_id=None):
+    """Retrieve all chat sessions summary for the dashboard that are not hidden, optionally filtered by user."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM sessions WHERE is_active = 1 ORDER BY timestamp DESC')
+    if user_id:
+        cursor.execute('SELECT * FROM sessions WHERE is_active = 1 AND user_id = ? ORDER BY timestamp DESC', (user_id,))
+    else:
+        cursor.execute('SELECT * FROM sessions WHERE is_active = 1 ORDER BY timestamp DESC')
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
 
-def search_sessions(query):
+def search_sessions(query, user_id=None):
     """
     Search for sessions matching a keyword across titles, message content, and audit feedback.
     Returns a list of matching session dicts with an additional 'match_snippet' field.
@@ -186,7 +198,8 @@ def search_sessions(query):
     cursor = conn.cursor()
     like_query = f"%{query}%"
 
-    cursor.execute('''
+    # 1. Search in Session titles and audit feedback
+    sql1 = '''
         SELECT DISTINCT s.*, 
             CASE
                 WHEN s.title LIKE ? THEN 'Title: ' || s.title
@@ -194,23 +207,32 @@ def search_sessions(query):
                 ELSE NULL
             END as match_snippet
         FROM sessions s
-        WHERE s.is_active = 1 AND (
-            s.title LIKE ?
-            OR s.audit_feedback LIKE ?
-        )
-        ORDER BY s.timestamp DESC
-    ''', (like_query, like_query, like_query, like_query))
+        WHERE s.is_active = 1 AND (s.title LIKE ? OR s.audit_feedback LIKE ?)
+    '''
+    params1 = [like_query, like_query, like_query, like_query]
+    if user_id:
+        sql1 += ' AND s.user_id = ?'
+        params1.append(user_id)
+    
+    sql1 += ' ORDER BY s.timestamp DESC'
+    cursor.execute(sql1, params1)
     session_rows = [dict(r) for r in cursor.fetchall()]
 
-    # Also search in messages content
-    cursor.execute('''
+    # 2. Search in messages content
+    sql2 = '''
         SELECT DISTINCT s.*, 
             'Message: ' || SUBSTR(m.content, MAX(1, INSTR(LOWER(m.content), LOWER(?)) - 30), 80) as match_snippet
         FROM sessions s
         JOIN messages m ON m.session_id = s.id
         WHERE s.is_active = 1 AND m.content LIKE ?
-        ORDER BY s.timestamp DESC
-    ''', (query, like_query))
+    '''
+    params2 = [query, like_query]
+    if user_id:
+        sql2 += ' AND s.user_id = ?'
+        params2.append(user_id)
+        
+    sql2 += ' ORDER BY s.timestamp DESC'
+    cursor.execute(sql2, params2)
     msg_rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
 
@@ -267,6 +289,23 @@ def update_session_title(session_id, new_title):
     cursor.execute('UPDATE sessions SET title = ? WHERE id = ?', (new_title, session_id))
     conn.commit()
     conn.close()
+
+def get_user_stats(user_id):
+    """Get total sessions and daily sessions for a user."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Total
+    cursor.execute('SELECT COUNT(*) FROM sessions WHERE user_id = ? AND is_active = 1', (user_id,))
+    total = cursor.fetchone()[0]
+    
+    # Daily (last 24 hours or calendar day?) Let's do calendar day for simplicity
+    today = datetime.now().strftime('%Y-%m-%d')
+    cursor.execute('SELECT COUNT(*) FROM sessions WHERE user_id = ? AND is_active = 1 AND timestamp LIKE ?', (user_id, f"{today}%"))
+    daily = cursor.fetchone()[0]
+    
+    conn.close()
+    return {"total": total, "daily": daily}
 
 def hide_session(session_id):
     """Mark a session as inactive (hidden from UI)."""

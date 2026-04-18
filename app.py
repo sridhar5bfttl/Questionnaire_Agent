@@ -1,10 +1,10 @@
 import streamlit as st
 import os
-from app.utils.state import init_state, ChatPhase, update_phase, add_message, get_messages
+from app.utils.state import init_state, ChatPhase, update_phase, add_message, get_messages, load_session_state
 from app.utils.llm_client import LLMClient
 from app.components.chat_interface import render_chat_history, render_chat_input
 from app.components.starter_prompts import render_starter_prompts
-from app.utils.db_manager import init_db, save_chat_session, save_assessment, get_session_messages, get_all_sessions
+from app.utils.db_manager import init_db, save_chat_session, save_assessment, get_session_messages, get_all_sessions, get_user_stats
 from app.utils.auditor_agent import AuditorAgent
 
 # Page Configuration
@@ -35,6 +35,23 @@ if "resume_session_id" in st.session_state and st.session_state.resume_session_i
 existing_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
 with st.sidebar:
+    st.subheader("👤 Identity")
+    if st.session_state.is_guest:
+        stats = get_user_stats(st.session_state.user_id)
+        st.info(f"**Guest Mode Active**\n\n📅 Daily: {stats['daily']}/2 sessions\n📚 Total: {stats['total']}/4 sessions")
+        email = st.text_input("Login (Email) to remove limits", placeholder="user@example.com")
+        if email and st.button("Login"):
+            st.session_state.user_id = email
+            st.session_state.is_guest = False
+            st.success(f"Welcome, {email}!")
+            st.rerun()
+    else:
+        st.success(f"Logged in as: **{st.session_state.user_id}**")
+        if st.button("Logout"):
+            st.session_state.user_id = "guest_default"
+            st.session_state.is_guest = True
+            st.rerun()
+    
     st.divider()
     if not existing_key:
         st.subheader("🗝️ Configuration")
@@ -72,28 +89,54 @@ llm = LLMClient()
 # Render Chat History
 render_chat_history(get_messages())
 
+# --- QUOTA & LIMIT CHECKS (Guest Mode) ---
+quota_blocked = False
+if st.session_state.is_guest:
+    stats = get_user_stats(st.session_state.user_id)
+    # 1. Conversation Count Limits (Only check if starting a NEW session)
+    if not st.session_state.current_session_id:
+        if stats['daily'] >= 2:
+            st.error("🚫 **Daily Limit Reached**: You have used your 2 daily guest sessions. Please login to continue.")
+            quota_blocked = True
+        elif stats['total'] >= 4:
+            st.error("🚫 **Total Limit Reached**: You have reached the maximum of 4 guest sessions. Please login to see your full history or start more chats.")
+            quota_blocked = True
+    
+    # 2. Token Limit Check
+    total_tokens = st.session_state.total_input_tokens + st.session_state.total_output_tokens
+    if total_tokens > 3000:
+        st.warning("⚠️ **Token Limit Reached**: This guest session has exceeded 3,000 tokens. To continue this specific deep dive, please login.")
+        quota_blocked = True
+
 # --- USER INPUT HANDLING ---
 
 # 1. Handling Starter Prompts (Greeting Phase & No Messages Only)
 if st.session_state.phase == ChatPhase.GREETING and not st.session_state.messages:
-    selected_prompt = render_starter_prompts()
-    if selected_prompt:
-        add_message("user", selected_prompt)
-        update_phase(ChatPhase.PROBING)
-        st.rerun()
+    if not quota_blocked:
+        selected_prompt = render_starter_prompts()
+        if selected_prompt:
+            add_message("user", selected_prompt)
+            update_phase(ChatPhase.PROBING)
+            st.rerun()
+    else:
+        st.info("💡 Login to unlock more conversations.")
 
 # 2. Handling Manual Chat Input
-user_input = render_chat_input()
-if user_input:
-    add_message("user", user_input)
-    if st.session_state.phase == ChatPhase.GREETING:
-        update_phase(ChatPhase.PROBING)
-    st.rerun()
+if not quota_blocked:
+    user_input = render_chat_input()
+    if user_input:
+        add_message("user", user_input)
+        if st.session_state.phase == ChatPhase.GREETING:
+            update_phase(ChatPhase.PROBING)
+        st.rerun()
+else:
+    # Disable input visually if blocked
+    st.chat_input("Quota limit reached. Please login...", disabled=True)
 
 # --- AI RESPONSE GENERATION ---
 # Check if the last message is from the user; if so, trigger AI response
 messages = get_messages()
-if messages and messages[-1]["role"] == "user":
+if messages and messages[-1]["role"] == "user" and not quota_blocked:
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             response_data = llm.get_response(messages, st.session_state.phase)
@@ -162,7 +205,9 @@ if st.session_state.phase in [ChatPhase.SUMMARY, ChatPhase.FEEDBACK]:
                     audit_score=score,
                     audit_feedback=feedback,
                     current_phase=st.session_state.phase.name,
-                    session_id=st.session_state.current_session_id
+                    session_id=st.session_state.current_session_id,
+                    user_id=st.session_state.user_id,
+                    is_guest=int(st.session_state.is_guest)
                 )
                 st.session_state.current_session_id = session_id
                 
@@ -218,7 +263,9 @@ if st.sidebar.button("Reset Chat"):
                     audit_score=score,
                     audit_feedback=feedback,
                     current_phase=st.session_state.phase.name,
-                    session_id=st.session_state.current_session_id
+                    session_id=st.session_state.current_session_id,
+                    user_id=st.session_state.user_id,
+                    is_guest=int(st.session_state.is_guest)
                 )
                 save_assessment(session_id, classification, confidence, rationale)
         st.toast("Session auto-saved!")
