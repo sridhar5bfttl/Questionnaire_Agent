@@ -43,6 +43,9 @@ def init_state():
 
     if "bypass_login" not in st.session_state:
         st.session_state.bypass_login = False
+    
+    if "request_email" not in st.session_state:
+        st.session_state.request_email = ""
 
     if "user_data" not in st.session_state:
         st.session_state.user_data = {
