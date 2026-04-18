@@ -1,6 +1,10 @@
 import sqlite3
 import os
 from datetime import datetime
+try:
+    from app.config import ADMIN_EMAIL
+except ImportError:
+    ADMIN_EMAIL = "admin@vantagepoint.ai"
 
 DB_PATH = os.path.join("data", "conversations.db")
 
@@ -91,7 +95,7 @@ def init_db():
     ''')
     
     # Initialize default admin email if not present
-    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('admin_notification_email', 'admin@vantagepoint.ai')")
+    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('admin_notification_email', ?)", (ADMIN_EMAIL,))
     cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('audit_threshold', '4')")
     
     # Migration: Handle existing databases
