@@ -185,20 +185,25 @@ else:
         if not messages:
             st.info("No messages found for this session.")
         else:
-            # Show conversation directly as a trail with "Session X" markers
-            last_burst = None
-            for msg in messages:
-                current_burst = msg.get("burst_number", 1)
-                if current_burst != last_burst:
-                    st.markdown(f"#### 🕓 Session {current_burst}")
-                    last_burst = current_burst
-
-                with st.chat_message(msg['role']):
-                    st.markdown(msg['content'])
-                    ts = msg.get("timestamp", "")
-                    if ts:
-                        label = "You" if msg["role"] == "user" else "Vantage Point AI"
-                        st.caption(f"🕐 {label} · {ts}")
+            # Group messages by burst_number for collapsible per-session view
+            bursts = {}
+            for m in messages:
+                b = m.get("burst_number", 1)
+                if b not in bursts: bursts[b] = []
+                bursts[b].append(m)
+            
+            sorted_bursts = sorted(bursts.keys())
+            for b_num in sorted_bursts:
+                # Latest burst is expanded by default
+                is_expanded = (b_num == sorted_bursts[-1])
+                with st.expander(f"🕓 Session {b_num} Transcript", expanded=is_expanded):
+                    for msg in bursts[b_num]:
+                        with st.chat_message(msg['role']):
+                            st.markdown(msg['content'])
+                            ts = msg.get("timestamp", "")
+                            if ts:
+                                label = "You" if msg["role"] == "user" else "Vantage Point AI"
+                                st.caption(f"🕐 {label} · {ts}")
 
     with tab2:
         assessment = get_session_assessment(selected_session_id)
