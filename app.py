@@ -170,12 +170,58 @@ try:
 except:
     pass
 
+# --- IDENTITY GATEKEEPER ---
+if st.session_state.is_guest and not st.session_state.bypass_login:
+    st.title("🎯 Vantage Point AI")
+    st.markdown("### Strategic Architecture & Technical Assessments")
+    
+    tabL, tabS = st.tabs(["🔐 Existing User Login", "📝 New User Signup"])
+    
+    with tabL:
+        login_email = st.text_input("Registered Email", placeholder="user@example.com", key="login_email")
+        if st.button("Access Platform", type="primary"):
+            if login_email:
+                status = get_user_status(login_email)
+                if status == "APPROVED":
+                    st.session_state.user_id = login_email
+                    st.session_state.is_guest = False
+                    log_activity(login_email, "LOGIN")
+                    st.rerun()
+                elif status == "GUEST":
+                    st.error("Account not found. Please use the Signup tab.")
+                else:
+                    # Handle PENDING or REJECTED
+                    st.session_state.request_email = login_email
+                    st.switch_page("pages/_Request_Access.py")
+            else:
+                st.error("Email required.")
+
+    with tabS:
+        signup_email = st.text_input("New Registration Email", placeholder="user@example.com", key="signup_email")
+        if st.button("Start Registration", type="secondary"):
+            if signup_email:
+                status = get_user_status(signup_email)
+                if status != "GUEST":
+                    st.warning(f"Account for {signup_email} already exists. Please use the Login tab.")
+                else:
+                    st.session_state.request_email = signup_email
+                    st.switch_page("pages/_Request_Access.py")
+            else:
+                st.error("Email required.")
+
+    st.divider()
+    if st.button("🚀 Work with Application (Guest Mode)"):
+        st.session_state.bypass_login = True
+        st.rerun()
+    
+    st.stop()
+
 # --- APP PAGE (CHAT INTERFACE) ---
 st.title("🎯 Vantage Point AI")
 
 # Optional: Welcome Banner for Guests
 if st.session_state.is_guest:
-    st.info("👋 **Welcome to Vantage Point AI!** You are currently in Guest Mode. Login in the sidebar to sync your history and unlock higher quotas.")
+    st.info("👋 **Guest Mode Active**: Login/Signup to unlock higher quotas and persistent search history.")
 
 # Display Active Topic Title if Resumed
 if st.session_state.get("current_title"):
