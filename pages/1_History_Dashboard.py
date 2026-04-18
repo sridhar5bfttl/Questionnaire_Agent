@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import pandas as pd
 import plotly.express as px
-from app.utils.db_manager import get_all_sessions, get_session_messages, get_session_assessment, hide_session
+from app.utils.db_manager import get_all_sessions, get_session_messages, get_session_assessment, hide_session, get_session_duration
 from app.utils.pdf_generator import generate_assessment_pdf
 
 st.set_page_config(page_title="History Dashboard", page_icon="📜", layout="wide")
@@ -35,8 +35,11 @@ else:
     # Sidebar Session Selector
     st.sidebar.header("Select a Session")
     
-    # Format session list for display
-    session_options = {f"{s['title']} ({s['timestamp'][:16]})": s['id'] for s in sessions}
+    # Format session list for display - show title + formatted date
+    session_options = {
+        f"{s['title']} — {s['timestamp'][:10]}": s['id'] 
+        for s in sessions
+    }
     selected_label = st.sidebar.radio("View Details For:", list(session_options.keys()))
     selected_session_id = session_options[selected_label]
 
@@ -100,10 +103,16 @@ else:
     messages_history = get_session_messages(selected_session_id)
     assessment = get_session_assessment(selected_session_id)
     
-    # 2. Section Header & Global Download
+    # 2. Section Header, Timestamps & Global Download
+    duration_data = get_session_duration(selected_session_id)
     scol1, scol2 = st.columns([3, 1])
     with scol1:
         st.header(f"Session: {selected_session['title']}")
+        # Timestamp & Duration metrics row
+        m1, m2, m3 = st.columns(3)
+        m1.metric("📅 Started At", duration_data["started_at"])
+        m2.metric("🏁 Last Message", duration_data["ended_at"])
+        m3.metric("⏱️ Duration", f"{duration_data['duration_minutes']} min")
     with scol2:
         if assessment:
             usage_data = {

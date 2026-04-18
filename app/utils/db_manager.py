@@ -140,3 +140,34 @@ def hide_session(session_id):
     cursor.execute('UPDATE sessions SET is_active = 0 WHERE id = ?', (session_id,))
     conn.commit()
     conn.close()
+
+def get_session_duration(session_id):
+    """
+    Calculate the duration of a session from the first to the last message timestamp.
+    Returns a dict with 'started_at', 'ended_at', and 'duration_minutes'.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT MIN(timestamp), MAX(timestamp)
+        FROM messages
+        WHERE session_id = ?
+    ''', (session_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row or not row[0]:
+        return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0}
+
+    fmt = "%Y-%m-%d %H:%M:%S"
+    try:
+        start = datetime.strptime(row[0], fmt)
+        end = datetime.strptime(row[1], fmt)
+        duration = round((end - start).total_seconds() / 60, 1)
+        return {
+            "started_at": start.strftime("%d %b %Y, %H:%M"),
+            "ended_at": end.strftime("%H:%M"),
+            "duration_minutes": duration
+        }
+    except Exception:
+        return {"started_at": row[0][:16], "ended_at": row[1][:16], "duration_minutes": 0}
