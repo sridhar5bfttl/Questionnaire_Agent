@@ -1,61 +1,128 @@
-# Use Case Assessment Questionnaire Agent
+# Vantage Point AI
 
-An agentic AI chat application built with Streamlit and LangChain to help classify business use cases into optimal technical solutions (RPA, ML, DL, NLP, GenAI).
+An enterprise-grade **Strategic Assessment Platform** built with Streamlit and LangChain. It guides users through a structured diagnostic to classify their business use case and recommend the optimal technical architecture—**RPA, ML, DL, NLP, or GenAI**.
 
-## Project Structure
-- `app.py`: Main entry point for the Streamlit application.
-- `app/`:
-    - `components/`: UI-specific modules (chat interface, buttons).
-    - `prompts/`: System instructions and starter prompt templates.
-    - `utils/`: State management, database persistence, and LLM orchestration.
-- `pages/`:
-    - `1_History_Dashboard.py`: A dedicated dashboard to review saved sessions, costs, and audits.
-- `documentation/`:
-    - [Architecture Overview](file:///Volumes/superfast/LinkedIn/Questionnaire_Agent/documentation/architecture.md): Technical breakdown of agents and data flow.
-    - [User Guide](file:///Volumes/superfast/LinkedIn/Questionnaire_Agent/documentation/user_guide.md): How to use the app and manage chat history.
-- `tests/`: Automated test suite for logic verification.
+---
 
-## Setup Instructions
+## ✨ Key Features
 
-### 1. Prerequisites
+| Feature | Description |
+|---|---|
+| 🤖 **AI Diagnostic Engine** | Multi-turn conversation to classify use cases with 0-100% confidence scores |
+| 🔍 **Auditor Agent** | Independent quality score (1-10), cost estimate, and actionable feedback per session |
+| 💾 **Session Persistence** | Full SQLite persistence with conversation transcripts and technical assessments |
+| 🚀 **Session Resumption** | Pick up any historical conversation exactly where you left off |
+| 📊 **Analytics Dashboard** | Interactive Plotly charts for token usage and cumulative GPT-5.1 cost tracking |
+| 📄 **PDF Reports** | Professional consolidated reports including transcript, audit, and resource usage |
+| 🎨 **Glassmorphism UI** | Premium custom CSS theme for a modern, enterprise look |
+| 🔑 **3-Tier Auth** | Supports Streamlit Secrets, `.env`, and UI key input for any deployment |
+| 🗑️ **Soft Delete** | Hide sessions from the UI without losing audit data |
+
+---
+
+## 🏗️ Project Structure
+
+```
+Questionnaire_Agent/
+├── app.py                      # Main Streamlit chat interface
+├── pages/
+│   └── 1_History_Dashboard.py # Analytics & history viewer
+├── app/
+│   ├── components/             # Reusable UI components
+│   ├── prompts/                # Agent system prompt templates
+│   └── utils/
+│       ├── db_manager.py       # SQLite persistence (with upsert & phase tracking)
+│       ├── state.py            # Session state management & resumption
+│       ├── llm_client.py       # LangChain GPT-4o integration
+│       ├── auditor_agent.py    # Quality scoring & cost tracking agent
+│       └── pdf_generator.py   # Unicode-safe PDF report generator
+├── assets/
+│   └── custom_styles.css       # Glassmorphism theme
+├── documentation/
+│   ├── architecture.md         # System architecture & data flow
+│   └── user_guide.md           # End-user guide
+├── tests/                      # Automated test suite
+├── DEPLOY.md                   # Deployment & configuration guide
+└── data/
+    └── conversations.db        # Local SQLite database
+```
+
+---
+
+## ⚙️ Setup & Installation
+
+### Prerequisites
 - Python 3.9+
-- OpenAI API Key
+- OpenAI API Key (with GPT-4o access)
 
-### 2. Installation
-Clone the repository and install the dependencies:
+### 1. Clone the Repository
+```bash
+git clone https://github.com/sridhar5bfttl/Questionnaire_Agent.git
+cd Questionnaire_Agent
+```
+
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Environment Variables
-Create a `.env` file in the root directory and add your OpenAI API key:
-```text
+### 3. Configure Your API Key
+**Option A: Local (`.env` file)**
+```
 OPENAI_API_KEY=your_api_key_here
 ```
+**Option B: Streamlit Cloud (Secrets)**
+```toml
+OPENAI_API_KEY = "your_api_key_here"
+```
+**Option C: UI Input**
+Run the app and enter the key in the sidebar when prompted.
 
-
-### 4. Running the Application
+### 4. Run the Application
 ```bash
 streamlit run app.py
 ```
 
-### 5. Running Tests
+### 5. Run Tests
 ```bash
-pytest
+pytest tests/ -v
 ```
 
-## Architecture
-The application uses a state-machine approach to guide the user through five phases:
-1. **Greeting**: Welcome message and starter prompts.
-2. **Probing**: Dynamic questioning to gather data details.
-3. **Summarization**: Classification of the use case with confidence scores.
-4. **Feedback**: Gathering user input and saving results to a local SQLite database.
-5. **Deep Dive**: Detailed research on a specific selected solution.
+---
 
-## Data Persistence
-The application automatically saves assessments and chat history to a local SQLite database located at `data/conversations.db`.
+## 🚀 Deployment
 
-You can query the data using standard SQLite tools:
+For full deployment options (Streamlit Cloud, GitHub Codespaces, Local), see **[DEPLOY.md](DEPLOY.md)**.
+
+---
+
+## 🔄 How to Resume a Conversation
+
+1. Navigate to the **History Dashboard** page.
+2. Select a previous session from the sidebar.
+3. Click **🚀 Resume Conversation**.
+4. Continue your conversation seamlessly—the AI remembers all context.
+
+---
+
+## 📐 Architecture
+
+The application uses a **Dual-Agent + State-Machine** pattern:
+
+1. **Consultant Agent** (GPT-4o): Manages the diagnostic conversation and phase transitions.
+2. **Auditor Agent** (GPT-4o-mini): Post-session quality scoring, title generation, and cost calculation.
+
+Conversation phases: `GREETING → PROBING → SUMMARY → FEEDBACK → DEEP_DIVE`
+
+For full technical details, see **[architecture.md](documentation/architecture.md)**.
+
+---
+
+## 📊 Database
 ```bash
+# View all saved sessions
+sqlite3 data/conversations.db "SELECT id, title, audit_score, current_phase FROM sessions;"
+
+# View assessments
 sqlite3 data/conversations.db "SELECT * FROM assessments;"
 ```

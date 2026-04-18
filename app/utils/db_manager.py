@@ -22,7 +22,8 @@ def init_db():
             total_cost FLOAT DEFAULT 0.0,
             audit_score INTEGER,
             audit_feedback TEXT,
-            is_active INTEGER DEFAULT 1
+            is_active INTEGER DEFAULT 1,
+            current_phase TEXT DEFAULT 'GREETING'
         )
     ''')
 
