@@ -56,8 +56,65 @@ def init_db():
     conn.commit()
     conn.close()
 
+def calculate_active_duration(messages):
+    """
+    Core logic to calculate active duration from a list of message objects.
+    Returns (total_seconds, burst_count).
+    """
+    if not messages:
+        return 0.0, 0
+    
+    fmt_full = "%Y-%m-%d %H:%M:%S.%f"
+    fmt_short = "%Y-%m-%d %H:%M:%S"
+    timestamps = []
+    
+    for m in messages:
+        # Handle dict format (from state)
+        if isinstance(m, dict):
+            raw_ts = m.get("raw_timestamp")
+        # Handle tuple/Row format (from DB)
+        elif isinstance(m, (tuple, sqlite3.Row)):
+            raw_ts = m[0]
+        else:
+            continue
+            
+        if not raw_ts: continue
+        
+        try:
+            if "." in raw_ts:
+                timestamps.append(datetime.strptime(raw_ts[:26], fmt_full))
+            else:
+                timestamps.append(datetime.strptime(raw_ts[:19], fmt_short))
+        except:
+            continue
+
+    if not timestamps:
+        return 0.0, 0
+
+    timestamps.sort()
+    total_seconds = 0.0
+    GAP_THRESHOLD = 30 * 60  # 30 minutes
+    burst_count = 1
+
+    for i in range(1, len(timestamps)):
+        diff = (timestamps[i] - timestamps[i-1]).total_seconds()
+        if diff < GAP_THRESHOLD:
+            total_seconds += diff
+        else:
+            burst_count += 1
+    
+    # Add a 10s floor per active burst
+    total_seconds += (burst_count * 10)
+    return total_seconds, burst_count
+
 def save_chat_session(messages, title="New Conversation", summary=None, input_tokens=0, output_tokens=0, total_cost=0.0, audit_score=None, audit_feedback=None, current_phase="GREETING", session_id=None):
     """Save or update a chat session and its audit data."""
+    # VERIFICATION: Calculate duration before saving
+    seconds, bursts = calculate_active_duration(messages)
+    m = int(seconds // 60)
+    s = int(seconds % 60)
+    print(f"DEBUG: Saving Session. Calculated Active Duration: {m}m {s}s over {bursts} burst(s).")
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -214,7 +271,6 @@ def hide_session(session_id):
 def get_session_duration(session_id):
     """
     Calculate the active duration of a session by summing intervals between messages.
-    Respects millisecond precision for accurate timing.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -230,38 +286,22 @@ def get_session_duration(session_id):
     if not rows:
         return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0, "duration_formatted": "0s"}
 
+    total_seconds, burst_count = calculate_active_duration(rows)
+
+    if not rows: # Recalculate start/end for display
+         return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0, "duration_formatted": "0s"}
+
+    # Re-parse for formatting
     fmt_full = "%Y-%m-%d %H:%M:%S.%f"
     fmt_short = "%Y-%m-%d %H:%M:%S"
-    timestamps = []
     
-    for r in rows:
-        raw_ts = r[0]
+    def parse_ts(raw):
         try:
-            if "." in raw_ts:
-                # Handle potential truncation of microseconds at the end
-                ts_part = raw_ts[:26]
-                timestamps.append(datetime.strptime(ts_part, fmt_full))
-            else:
-                timestamps.append(datetime.strptime(raw_ts[:19], fmt_short))
-        except:
-            continue
+            return datetime.strptime(raw[:26], fmt_full) if "." in raw else datetime.strptime(raw[:19], fmt_short)
+        except: return datetime.now()
 
-    if not timestamps:
-        return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0, "duration_formatted": "0s"}
-
-    total_seconds = 0.0
-    GAP_THRESHOLD = 30 * 60  # 30 minutes
-    burst_count = 1
-
-    for i in range(1, len(timestamps)):
-        diff = (timestamps[i] - timestamps[i-1]).total_seconds()
-        if diff < GAP_THRESHOLD:
-            total_seconds += diff
-        else:
-            burst_count += 1
-    
-    # Add a 10s "thought time" floor per active burst, instead of a blanket 60s
-    total_seconds += (burst_count * 10)
+    start_dt = parse_ts(rows[0][0])
+    end_dt = parse_ts(rows[-1][0])
 
     duration_min = round(total_seconds / 60, 2)
     
@@ -275,8 +315,8 @@ def get_session_duration(session_id):
         duration_formatted = f"{secs}s"
     
     return {
-        "started_at": timestamps[0].strftime("%d %b %Y, %H:%M:%S"),
-        "ended_at": timestamps[-1].strftime("%H:%M:%S"),
+        "started_at": start_dt.strftime("%d %b %Y, %H:%M:%S"),
+        "ended_at": end_dt.strftime("%H:%M:%S"),
         "duration_minutes": duration_min,
         "duration_formatted": duration_formatted
     }
