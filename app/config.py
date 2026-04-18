@@ -1,11 +1,14 @@
 import os
 from dotenv import load_dotenv
 
+import streamlit as st
+
 load_dotenv()
 
 # --- ADMIN CREDENTIALS ---
-ADMIN_USER = os.getenv("ADMIN_USER", "vantage_admin")
-ADMIN_PASS = os.getenv("ADMIN_PASS", "architect_2024")
+# Prioritizes: Streamlit Secrets -> .env/Env Vars -> Defaults
+ADMIN_USER = st.secrets.get("ADMIN_USER") or os.getenv("ADMIN_USER") or "vantage_admin"
+ADMIN_PASS = st.secrets.get("ADMIN_PASS") or os.getenv("ADMIN_PASS") or "architect_2024"
 
 # --- QUOTA SETTINGS (GUEST) ---
 GUEST_MAX_SESSIONS = 4
