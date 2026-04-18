@@ -81,10 +81,16 @@ def save_chat_session(messages, title="New Conversation", summary=None, input_to
     
     # 3. Insert each message (new or expanded history)
     for msg in messages:
-        cursor.execute(
-            'INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)',
-            (session_id, msg["role"], msg["content"])
-        )
+        if "raw_timestamp" in msg and msg["raw_timestamp"]:
+            cursor.execute(
+                'INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)',
+                (session_id, msg["role"], msg["content"], msg["raw_timestamp"])
+            )
+        else:
+            cursor.execute(
+                'INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)',
+                (session_id, msg["role"], msg["content"])
+            )
     
     conn.commit()
     conn.close()
@@ -172,6 +178,8 @@ def get_session_messages(session_id):
     for row in rows:
         d = dict(row)
         raw_ts = d.get("timestamp", "")
+        # Preserve original DB timestamp for re-saving logic
+        d["raw_timestamp"] = raw_ts
         try:
             # Format to: "18 Apr 2026, 09:45"
             dt = datetime.strptime(raw_ts[:19], "%Y-%m-%d %H:%M:%S")

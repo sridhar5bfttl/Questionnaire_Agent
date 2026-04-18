@@ -46,10 +46,12 @@ def update_phase(new_phase: ChatPhase):
 
 def add_message(role: str, content: str):
     """Add a message to the chat history with a timestamp. Marks session as unsaved."""
+    now = datetime.now()
     st.session_state.messages.append({
         "role": role,
         "content": content,
-        "timestamp": datetime.now().strftime("%H:%M")
+        "timestamp": now.strftime("%H:%M"),
+        "raw_timestamp": now.strftime("%Y-%m-%d %H:%M:%S")
     })
     # Any new message makes this session "dirty" — needs saving on exit/reset
     st.session_state.session_saved = False
@@ -61,10 +63,10 @@ def get_messages():
 def load_session_state(session_id, messages, metadata):
     """Inject historical session data into st.session_state."""
     st.session_state.current_session_id = session_id
-    # When loading from DB, messages may not have timestamps - derive from DB or mark as "Historical"
+    # When loading from DB, messages will have both 'timestamp' (UI) and 'raw_timestamp' (DB)
     for msg in messages:
         if "timestamp" not in msg:
-            msg["timestamp"] = msg.get("timestamp", "Historical")
+            msg["timestamp"] = "N/A"
     st.session_state.messages = messages
     st.session_state.total_input_tokens = metadata.get("input_tokens", 0)
     st.session_state.total_output_tokens = metadata.get("output_tokens", 0)
