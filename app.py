@@ -126,7 +126,13 @@ if st.session_state.phase in [ChatPhase.SUMMARY, ChatPhase.FEEDBACK]:
         if st.button("💾 Save to Database (w/ Audit)"):
             with st.spinner("Auditing conversation..."):
                 # 1. Auditor Agent: Title, Score, Feedback, and Tech Rec
-                title = auditor.generate_title(st.session_state.messages)
+                # 1. Title Generation (Only if not already titled)
+                if not st.session_state.get("current_title"):
+                    title = auditor.generate_title(st.session_state.messages)
+                    st.session_state.current_title = title
+                else:
+                    title = st.session_state.current_title
+                
                 score, feedback = auditor.score_conversation(st.session_state.messages)
                 
                 # Find the summary text to extract recommendation from
@@ -184,7 +190,11 @@ if st.sidebar.button("Reset Chat"):
     if not st.session_state.session_saved and len(st.session_state.messages) > 0:
         with st.sidebar:
             with st.spinner("Auto-saving before reset..."):
-                title = auditor.generate_title(st.session_state.messages)
+                if not st.session_state.get("current_title"):
+                    title = auditor.generate_title(st.session_state.messages)
+                    st.session_state.current_title = title
+                else:
+                    title = st.session_state.current_title
                 score, feedback = auditor.score_conversation(st.session_state.messages)
                 
                 summary_text = ""

@@ -29,6 +29,9 @@ def init_state():
     if "current_session_id" not in st.session_state:
         st.session_state.current_session_id = None
     
+    if "current_title" not in st.session_state:
+        st.session_state.current_title = None
+    
     if "user_data" not in st.session_state:
         st.session_state.user_data = {
             "description": "",
@@ -63,6 +66,7 @@ def get_messages():
 def load_session_state(session_id, messages, metadata):
     """Inject historical session data into st.session_state."""
     st.session_state.current_session_id = session_id
+    st.session_state.current_title = metadata.get("title")
     # When loading from DB, messages will have both 'timestamp' (UI) and 'raw_timestamp' (DB)
     for msg in messages:
         if "timestamp" not in msg:

@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import pandas as pd
 import plotly.express as px
-from app.utils.db_manager import get_all_sessions, get_session_messages, get_session_assessment, hide_session, get_session_duration, search_sessions
+from app.utils.db_manager import get_all_sessions, get_session_messages, get_session_assessment, hide_session, get_session_duration, search_sessions, update_session_title
 from app.utils.pdf_generator import generate_assessment_pdf
 
 st.set_page_config(page_title="History Dashboard", page_icon="📜", layout="wide")
@@ -71,6 +71,16 @@ else:
         selected_match = next((s for s in display_sessions if s['id'] == selected_session_id), None)
         if selected_match and selected_match.get("match_snippet"):
             st.sidebar.caption(f"💡 **Match**: {selected_match['match_snippet'][:100]}...")
+
+    # --- RENAME FEATURE ---
+    current_session = next((s for s in display_sessions if s['id'] == selected_session_id), None)
+    with st.sidebar.expander("✏️ Rename Session"):
+        new_title = st.text_input("New Title", value=current_session['title'] if current_session else "")
+        if st.button("Save Title", width="stretch"):
+            if new_title.strip():
+                update_session_title(selected_session_id, new_title.strip())
+                st.toast("Title updated!")
+                st.rerun()
 
     st.sidebar.divider()
     if st.sidebar.button("🗑️ Hide from List", width="stretch"):

@@ -260,6 +260,14 @@ def get_session_assessment(session_id):
     conn.close()
     return dict(row) if row else None
 
+def update_session_title(session_id, new_title):
+    """Manually rename a session title."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE sessions SET title = ? WHERE id = ?', (new_title, session_id))
+    conn.commit()
+    conn.close()
+
 def hide_session(session_id):
     """Mark a session as inactive (hidden from UI)."""
     conn = sqlite3.connect(DB_PATH)
