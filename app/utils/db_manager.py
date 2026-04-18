@@ -209,31 +209,54 @@ def hide_session(session_id):
 
 def get_session_duration(session_id):
     """
-    Calculate the duration of a session from the first to the last message timestamp.
-    Returns a dict with 'started_at', 'ended_at', and 'duration_minutes'.
+    Calculate the active duration of a session by summing intervals between messages.
+    Ignores large gaps (e.g., > 30 mins) to account for resumed sessions.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT MIN(timestamp), MAX(timestamp)
+        SELECT timestamp
         FROM messages
         WHERE session_id = ?
+        ORDER BY timestamp ASC
     ''', (session_id,))
-    row = cursor.fetchone()
+    rows = cursor.fetchall()
     conn.close()
 
-    if not row or not row[0]:
+    if not rows:
         return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0}
 
     fmt = "%Y-%m-%d %H:%M:%S"
-    try:
-        start = datetime.strptime(row[0], fmt)
-        end = datetime.strptime(row[1], fmt)
-        duration = round((end - start).total_seconds() / 60, 1)
-        return {
-            "started_at": start.strftime("%d %b %Y, %H:%M"),
-            "ended_at": end.strftime("%H:%M"),
-            "duration_minutes": duration
-        }
-    except Exception:
-        return {"started_at": row[0][:16], "ended_at": row[1][:16], "duration_minutes": 0}
+    timestamps = []
+    for r in rows:
+        try:
+            # Strip sub-seconds if present from raw SQLite timestamps
+            ts_str = r[0].split('.')[0] if '.' in r[0] else r[0]
+            timestamps.append(datetime.strptime(ts_str, fmt))
+        except:
+            continue
+
+    if not timestamps:
+        return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0}
+
+    total_seconds = 0
+    GAP_THRESHOLD = 30 * 60  # 30 minutes in seconds
+
+    for i in range(1, len(timestamps)):
+        diff = (timestamps[i] - timestamps[i-1]).total_seconds()
+        if diff < GAP_THRESHOLD:
+            total_seconds += diff
+        # Else: ignore the gap, it's a resume after a long break
+
+    # Add a small buffer (e.g. 1 min) for the very first message's thought time 
+    # and final response if there are messages
+    if total_seconds > 0 or len(timestamps) > 0:
+        total_seconds += 60 
+
+    duration_min = round(total_seconds / 60, 1)
+    
+    return {
+        "started_at": timestamps[0].strftime("%d %b %Y, %H:%M"),
+        "ended_at": timestamps[-1].strftime("%H:%M"),
+        "duration_minutes": duration_min
+    }
