@@ -99,22 +99,8 @@ with st.sidebar:
     st.subheader("👤 Identity")
     if st.session_state.is_guest:
         stats = get_user_stats(st.session_state.user_id)
-        st.info(f"**Guest Mode Active**\n\n📅 Daily: {stats['daily']}/2 sessions\n📚 Total: {stats['total']}/4 sessions")
-        email = st.text_input("Login (Email) to remove limits", placeholder="user@example.com")
-        if email and st.button("Login"):
-            ensure_user(email)
-            status = get_user_status(email)
-            
-            if status == "APPROVED":
-                st.session_state.user_id = email
-                st.session_state.is_guest = False
-                log_activity(email, "LOGIN")
-                st.success(f"Welcome back, {email}!")
-                st.rerun()
-            else:
-                # Automatic redirection for NEW or PENDING users
-                st.session_state.request_email = email
-                st.switch_page("pages/3_Request_Access.py")
+        st.info(f"**Guest Mode Active**\n\n📅 Daily: {stats['daily']}/{GUEST_DAILY_SESSIONS} sessions\n📚 Total: {stats['total']}/{GUEST_MAX_SESSIONS} sessions")
+        st.caption("Login using the main screen to unlock full access.")
     else:
         st.success(f"Logged in as: **{st.session_state.user_id}**")
         
@@ -171,7 +157,7 @@ except:
     pass
 
 # --- MAIN UI WRAPPER ---
-if st.session_state.is_guest and st.session_state.user_id == "guest_default":
+if st.session_state.is_guest and not st.session_state.bypass_login:
     # --- LANDING PAGE FOR NON-LOGGED IN USERS ---
     st.title("🎯 Vantage Point AI")
     st.markdown("### Technical Strategy & Architecture Partner")
@@ -179,15 +165,15 @@ if st.session_state.is_guest and st.session_state.user_id == "guest_default":
     col1, col2 = st.columns([2, 1])
     with col1:
         st.write("""
-            Welcome to the Strategic Architecture Partner. We help you navigate complex requirements 
-            using high-merit technical assessments. 
-            
-            **Please Login in the sidebar to access your full strategy suite.**
+            Welcome! I am your technical strategy partner. I help you navigate through complex business 
+            requirements to identify the perfect technical architecture.
         """)
-        st.info("💡 Registered users get higher quotas, persistent history, and professional audit reports.")
         
-        login_email = st.text_input("Enter your Email to Access", placeholder="user@example.com")
-        if st.button("🔓 Strategic Login", type="primary"):
+        st.subheader("🔓 Access the Strategic Suite")
+        login_email = st.text_input("Enter your Email Address", placeholder="user@example.com")
+        
+        c1, c2 = st.columns(2)
+        if c1.button("Strategic Login", type="primary"):
             if login_email:
                 ensure_user(login_email)
                 status = get_user_status(login_email)
@@ -202,17 +188,16 @@ if st.session_state.is_guest and st.session_state.user_id == "guest_default":
                     st.switch_page("pages/3_Request_Access.py")
             else:
                 st.error("Please enter your email.")
-
-        st.divider()
-        if st.button("🚀 Continue as Guest (Trial Mode)"):
-             st.session_state.user_id = "guest_default"
-             st.session_state.is_guest = True # Already is, but this force-refreshes the view
+        
+        if c2.button("Continue as Guest (Limited)"):
+             st.session_state.bypass_login = True
              st.rerun()
 
     with col2:
+         # Use a placeholder or generated image
          st.image("https://img.freepik.com/free-vector/strategic-consulting-concept-illustration_114360-8964.jpg", use_container_width=True)
 
-    st.stop() # Prevent chat from loading below
+    st.stop() # Stop execution here for landing page
 
 # --- APP PAGE (CHAT INTERFACE) ---
 st.title("🎯 Vantage Point AI")

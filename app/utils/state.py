@@ -41,6 +41,9 @@ def init_state():
     if "current_burst_number" not in st.session_state:
         st.session_state.current_burst_number = 1
 
+    if "bypass_login" not in st.session_state:
+        st.session_state.bypass_login = False
+
     if "user_data" not in st.session_state:
         st.session_state.user_data = {
             "description": "",
