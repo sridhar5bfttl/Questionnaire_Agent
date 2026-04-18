@@ -4,7 +4,7 @@ from app.utils.state import init_state, ChatPhase, update_phase, add_message, ge
 from app.utils.llm_client import LLMClient
 from app.components.chat_interface import render_chat_history, render_chat_input
 from app.components.starter_prompts import render_starter_prompts
-from app.utils.db_manager import init_db, save_chat_session, save_assessment
+from app.utils.db_manager import init_db, save_chat_session, save_assessment, get_session_messages, get_all_sessions
 from app.utils.auditor_agent import AuditorAgent
 
 # Page Configuration
