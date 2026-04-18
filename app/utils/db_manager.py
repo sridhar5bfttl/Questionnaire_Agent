@@ -114,7 +114,7 @@ def get_all_sessions():
     return [dict(row) for row in rows]
 
 def get_session_messages(session_id):
-    """Retrieve all messages for a specific session including timestamps."""
+    """Retrieve all messages for a specific session including formatted timestamps."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -124,11 +124,13 @@ def get_session_messages(session_id):
     result = []
     for row in rows:
         d = dict(row)
-        # Format timestamp to HH:MM for display
+        raw_ts = d.get("timestamp", "")
         try:
-            d["timestamp"] = d["timestamp"][:16].split(" ")[-1]  # Extract HH:MM
+            # Format to: "18 Apr 2026, 09:45"
+            dt = datetime.strptime(raw_ts[:19], "%Y-%m-%d %H:%M:%S")
+            d["timestamp"] = dt.strftime("%d %b %Y, %H:%M")
         except Exception:
-            d["timestamp"] = "Historical"
+            d["timestamp"] = raw_ts[:16] if raw_ts else "N/A"
         result.append(d)
     return result
 

@@ -140,9 +140,17 @@ else:
 
     with tab1:
         messages = get_session_messages(selected_session_id)
-        for msg in messages:
-            with st.chat_message(msg['role']):
-                st.markdown(msg['content'])
+        if not messages:
+            st.info("No messages found for this session.")
+        else:
+            for msg in messages:
+                with st.chat_message(msg['role']):
+                    st.markdown(msg['content'])
+                    # Show timestamp caption with role label and time
+                    ts = msg.get("timestamp", "")
+                    if ts:
+                        label = "You" if msg["role"] == "user" else "Vantage Point AI"
+                        st.caption(f"🕐 {label} · {ts}")
 
     with tab2:
         assessment = get_session_assessment(selected_session_id)
