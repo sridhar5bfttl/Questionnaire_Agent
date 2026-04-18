@@ -48,6 +48,7 @@ with st.sidebar:
     else:
         st.success(f"Logged in as: **{st.session_state.user_id}**")
         if st.button("Logout"):
+            trigger_auto_save()
             st.session_state.user_id = "guest_default"
             st.session_state.is_guest = True
             st.rerun()
@@ -66,6 +67,55 @@ with st.sidebar:
         st.caption("✅ API Key active (System)")
 
 auditor = AuditorAgent()
+
+def trigger_auto_save():
+    """Shared logic to audit and save a session if it has content."""
+    if not st.session_state.session_saved and len(st.session_state.messages) > 0:
+        with st.sidebar:
+            with st.spinner("Auto-saving..."):
+                # 1. Title
+                if not st.session_state.get("current_title"):
+                    title = auditor.generate_title(st.session_state.messages)
+                    st.session_state.current_title = title
+                else:
+                    title = st.session_state.current_title
+                
+                # 2. Score
+                score, feedback = auditor.score_conversation(st.session_state.messages)
+                
+                # 3. Recommendation
+                summary_text = ""
+                for msg in reversed(st.session_state.messages):
+                    if msg["role"] == "assistant":
+                        summary_text = msg["content"]
+                        break
+                classification, confidence, rationale = auditor.extract_recommendation(summary_text)
+
+                # 4. Cost
+                cost = auditor.calculate_cost(
+                    st.session_state.total_input_tokens, 
+                    st.session_state.total_output_tokens
+                )
+                
+                # 5. Persist
+                session_id = save_chat_session(
+                    st.session_state.messages, 
+                    title=title,
+                    summary="Auto-Save (Triggered)",
+                    input_tokens=st.session_state.total_input_tokens,
+                    output_tokens=st.session_state.total_output_tokens,
+                    total_cost=cost,
+                    audit_score=score,
+                    audit_feedback=feedback,
+                    current_phase=st.session_state.phase.name,
+                    session_id=st.session_state.current_session_id,
+                    user_id=st.session_state.user_id,
+                    is_guest=int(st.session_state.is_guest)
+                )
+                save_assessment(session_id, classification, confidence, rationale)
+                st.session_state.session_saved = True
+                return True
+    return False
 
 # Custom CSS Injection
 def load_css(file_name):
@@ -232,43 +282,19 @@ st.sidebar.markdown("---")
 st.sidebar.info(f"Current Phase: **{st.session_state.phase.name}**")
 if st.sidebar.button("Reset Chat"):
     # Auto-save before reset if not already saved and history exists
-    if not st.session_state.session_saved and len(st.session_state.messages) > 0:
-        with st.sidebar:
-            with st.spinner("Auto-saving before reset..."):
-                if not st.session_state.get("current_title"):
-                    title = auditor.generate_title(st.session_state.messages)
-                    st.session_state.current_title = title
-                else:
-                    title = st.session_state.current_title
-                score, feedback = auditor.score_conversation(st.session_state.messages)
-                
-                summary_text = ""
-                for msg in reversed(st.session_state.messages):
-                    if msg["role"] == "assistant":
-                        summary_text = msg["content"]
-                        break
-                classification, confidence, rationale = auditor.extract_recommendation(summary_text)
-
-                cost = auditor.calculate_cost(
-                    st.session_state.total_input_tokens, 
-                    st.session_state.total_output_tokens
-                )
-                session_id = save_chat_session(
-                    st.session_state.messages, 
-                    title=title,
-                    summary="Auto-Save on Reset",
-                    input_tokens=st.session_state.total_input_tokens,
-                    output_tokens=st.session_state.total_output_tokens,
-                    total_cost=cost,
-                    audit_score=score,
-                    audit_feedback=feedback,
-                    current_phase=st.session_state.phase.name,
-                    session_id=st.session_state.current_session_id,
-                    user_id=st.session_state.user_id,
-                    is_guest=int(st.session_state.is_guest)
-                )
-                save_assessment(session_id, classification, confidence, rationale)
+    if trigger_auto_save():
         st.toast("Session auto-saved!")
 
+    # Preserve identity state
+    uid = st.session_state.user_id
+    guest_flag = st.session_state.is_guest
+    api_key = st.session_state.get("openai_api_key")
+    
     st.session_state.clear()
+    
+    # Restore identity
+    st.session_state.user_id = uid
+    st.session_state.is_guest = guest_flag
+    if api_key: st.session_state.openai_api_key = api_key
+    
     st.rerun()
