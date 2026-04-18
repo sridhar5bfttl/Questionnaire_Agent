@@ -114,14 +114,23 @@ def get_all_sessions():
     return [dict(row) for row in rows]
 
 def get_session_messages(session_id):
-    """Retrieve all messages for a specific session."""
+    """Retrieve all messages for a specific session including timestamps."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute('SELECT role, content FROM messages WHERE session_id = ? ORDER BY timestamp ASC', (session_id,))
+    cursor.execute('SELECT role, content, timestamp FROM messages WHERE session_id = ? ORDER BY timestamp ASC', (session_id,))
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    result = []
+    for row in rows:
+        d = dict(row)
+        # Format timestamp to HH:MM for display
+        try:
+            d["timestamp"] = d["timestamp"][:16].split(" ")[-1]  # Extract HH:MM
+        except Exception:
+            d["timestamp"] = "Historical"
+        result.append(d)
+    return result
 
 def get_session_assessment(session_id):
     """Retrieve assessment details for a specific session."""

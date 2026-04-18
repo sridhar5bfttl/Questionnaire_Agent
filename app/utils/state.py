@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import datetime
 from enum import Enum, auto
 
 class ChatPhase(Enum):
@@ -44,8 +45,12 @@ def update_phase(new_phase: ChatPhase):
     st.session_state.phase = new_phase
 
 def add_message(role: str, content: str):
-    """Add a message to the chat history."""
-    st.session_state.messages.append({"role": role, "content": content})
+    """Add a message to the chat history with a timestamp."""
+    st.session_state.messages.append({
+        "role": role,
+        "content": content,
+        "timestamp": datetime.now().strftime("%H:%M")
+    })
 
 def get_messages():
     """Return the chat history."""
@@ -54,6 +59,10 @@ def get_messages():
 def load_session_state(session_id, messages, metadata):
     """Inject historical session data into st.session_state."""
     st.session_state.current_session_id = session_id
+    # When loading from DB, messages may not have timestamps - derive from DB or mark as "Historical"
+    for msg in messages:
+        if "timestamp" not in msg:
+            msg["timestamp"] = msg.get("timestamp", "Historical")
     st.session_state.messages = messages
     st.session_state.total_input_tokens = metadata.get("input_tokens", 0)
     st.session_state.total_output_tokens = metadata.get("output_tokens", 0)
