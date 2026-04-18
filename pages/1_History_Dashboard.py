@@ -46,6 +46,10 @@ else:
         st.toast(f"Session '{selected_label}' hidden!")
         st.rerun()
 
+    if st.sidebar.button("🚀 Resume Conversation", width="stretch", type="primary"):
+        st.session_state.resume_session_id = selected_session_id
+        st.switch_page("app.py")
+
     # Main Metrics & Visualization Dashboard
     st.subheader("📊 Global Analytics")
     

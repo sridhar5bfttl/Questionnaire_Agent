@@ -25,6 +25,9 @@ def init_state():
     if "session_saved" not in st.session_state:
         st.session_state.session_saved = False
     
+    if "current_session_id" not in st.session_state:
+        st.session_state.current_session_id = None
+    
     if "user_data" not in st.session_state:
         st.session_state.user_data = {
             "description": "",
@@ -47,3 +50,18 @@ def add_message(role: str, content: str):
 def get_messages():
     """Return the chat history."""
     return st.session_state.messages
+
+def load_session_state(session_id, messages, metadata):
+    """Inject historical session data into st.session_state."""
+    st.session_state.current_session_id = session_id
+    st.session_state.messages = messages
+    st.session_state.total_input_tokens = metadata.get("input_tokens", 0)
+    st.session_state.total_output_tokens = metadata.get("output_tokens", 0)
+    st.session_state.session_saved = True # Prevent immediate auto-save loop
+    
+    # Attempt to restore the phase
+    phase_str = metadata.get("current_phase", "GREETING")
+    try:
+        st.session_state.phase = ChatPhase[phase_str]
+    except KeyError:
+        st.session_state.phase = ChatPhase.SUMMARY if len(messages) > 10 else ChatPhase.PROBING

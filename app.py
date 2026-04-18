@@ -14,6 +14,22 @@ st.set_page_config(page_title="Vantage Point AI", page_icon="🎯", layout="wide
 init_state()
 init_db()
 
+# --- RESUME LOGIC ---
+if "resume_session_id" in st.session_state and st.session_state.resume_session_id is not None:
+    session_id = st.session_state.resume_session_id
+    historical_msgs = get_session_messages(session_id)
+    
+    # Get metadata for the session (we need tokens and phase)
+    all_sessions = get_all_sessions()
+    session_metadata = next((s for s in all_sessions if s['id'] == session_id), {})
+    
+    from app.utils.state import load_session_state
+    load_session_state(session_id, historical_msgs, session_metadata)
+    
+    # Clear the trigger flag
+    del st.session_state.resume_session_id
+    st.toast(f"Resumed session: {session_metadata.get('title', 'Unknown')}")
+
 # --- API KEY GUARD ---
 # Check prioritized order: Secrets -> Env -> SessionState
 existing_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
@@ -129,7 +145,7 @@ if st.session_state.phase in [ChatPhase.SUMMARY, ChatPhase.FEEDBACK]:
                     st.session_state.total_output_tokens
                 )
                 
-                # 3. Save to DB
+                # 3. Save to DB (Update if Resumed)
                 session_id = save_chat_session(
                     st.session_state.messages, 
                     title=title,
@@ -138,8 +154,11 @@ if st.session_state.phase in [ChatPhase.SUMMARY, ChatPhase.FEEDBACK]:
                     output_tokens=st.session_state.total_output_tokens,
                     total_cost=cost,
                     audit_score=score,
-                    audit_feedback=feedback
+                    audit_feedback=feedback,
+                    current_phase=st.session_state.phase.name,
+                    session_id=st.session_state.current_session_id
                 )
+                st.session_state.current_session_id = session_id
                 
                 # 4. Save technical assessment
                 save_assessment(session_id, classification, confidence, rationale)
@@ -187,7 +206,9 @@ if st.sidebar.button("Reset Chat"):
                     output_tokens=st.session_state.total_output_tokens,
                     total_cost=cost,
                     audit_score=score,
-                    audit_feedback=feedback
+                    audit_feedback=feedback,
+                    current_phase=st.session_state.phase.name,
+                    session_id=st.session_state.current_session_id
                 )
                 save_assessment(session_id, classification, confidence, rationale)
         st.toast("Session auto-saved!")

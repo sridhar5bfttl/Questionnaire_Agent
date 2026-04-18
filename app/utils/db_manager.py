@@ -55,20 +55,30 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_chat_session(messages, title="New Conversation", summary=None, input_tokens=0, output_tokens=0, total_cost=0.0, audit_score=None, audit_feedback=None):
-    """Save the full chat history and audit data to the database."""
+def save_chat_session(messages, title="New Conversation", summary=None, input_tokens=0, output_tokens=0, total_cost=0.0, audit_score=None, audit_feedback=None, current_phase="GREETING", session_id=None):
+    """Save or update a chat session and its audit data."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # 1. Create a new session record with auditing data
-    cursor.execute('''
-        INSERT INTO sessions (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback))
+    if session_id:
+        # 1. Update existing session
+        cursor.execute('''
+            UPDATE sessions 
+            SET title = ?, summary = ?, input_tokens = ?, output_tokens = ?, total_cost = ?, audit_score = ?, audit_feedback = ?, current_phase = ?, timestamp = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase, session_id))
+        
+        # 2. Clear old messages for this session to avoid duplicates
+        cursor.execute('DELETE FROM messages WHERE session_id = ?', (session_id,))
+    else:
+        # 1. Create a new session record
+        cursor.execute('''
+            INSERT INTO sessions (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (title, summary, input_tokens, output_tokens, total_cost, audit_score, audit_feedback, current_phase))
+        session_id = cursor.lastrowid
     
-    session_id = cursor.lastrowid
-    
-    # 2. Insert each message
+    # 3. Insert each message (new or expanded history)
     for msg in messages:
         cursor.execute(
             'INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)',
