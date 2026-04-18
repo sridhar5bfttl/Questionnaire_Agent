@@ -170,11 +170,52 @@ try:
 except:
     pass
 
-# Title and Description
+# --- MAIN UI WRAPPER ---
+if st.session_state.is_guest and st.session_state.user_id == "guest_default":
+    # --- LANDING PAGE FOR NON-LOGGED IN USERS ---
+    st.title("🎯 Vantage Point AI")
+    st.markdown("### Technical Strategy & Architecture Partner")
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.write("""
+            Welcome to the Strategic Architecture Partner. We help you navigate complex requirements 
+            using high-merit technical assessments. 
+            
+            **Please Login in the sidebar to access your full strategy suite.**
+        """)
+        st.info("💡 Registered users get higher quotas, persistent history, and professional audit reports.")
+        
+        login_email = st.text_input("Enter your Email to Access", placeholder="user@example.com")
+        if st.button("🔓 Strategic Login", type="primary"):
+            if login_email:
+                ensure_user(login_email)
+                status = get_user_status(login_email)
+                if status == "APPROVED":
+                    st.session_state.user_id = login_email
+                    st.session_state.is_guest = False
+                    log_activity(login_email, "LOGIN")
+                    st.success("Access Granted!")
+                    st.rerun()
+                else:
+                    st.session_state.request_email = login_email
+                    st.switch_page("pages/3_Request_Access.py")
+            else:
+                st.error("Please enter your email.")
+
+        st.divider()
+        if st.button("🚀 Continue as Guest (Trial Mode)"):
+             st.session_state.user_id = "guest_default"
+             st.session_state.is_guest = True # Already is, but this force-refreshes the view
+             st.rerun()
+
+    with col2:
+         st.image("https://img.freepik.com/free-vector/strategic-consulting-concept-illustration_114360-8964.jpg", use_container_width=True)
+
+    st.stop() # Prevent chat from loading below
+
+# --- APP PAGE (CHAT INTERFACE) ---
 st.title("🎯 Vantage Point AI")
-st.markdown("""
-Welcome! I am your technical strategy partner. I help you navigate through complex business requirements to identify the perfect technical architecture—whether it's **RPA, ML, DL, NLP, or GenAI**.
-""")
 
 # Display Active Topic Title if Resumed
 if st.session_state.get("current_title"):
