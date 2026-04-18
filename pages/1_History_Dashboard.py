@@ -63,7 +63,7 @@ else:
 
     # Format session list for display - show title + formatted date
     session_options = {
-        f"#{s.get('session_number', 1)} {s['title']} — {s['timestamp'][:16]}": s['id']
+        f"{s['title']} — {s['timestamp'][:10]}": s['id']
         for s in display_sessions
     }
     selected_label = st.sidebar.radio("View Details For:", list(session_options.keys()))
@@ -149,8 +149,7 @@ else:
     duration_data = get_session_duration(selected_session_id)
     scol1, scol2 = st.columns([3, 1])
     with scol1:
-        s_num = selected_session.get('session_number', 1)
-        st.header(f"Session #{s_num}: {selected_session['title']}")
+        st.header(f"Topic: {selected_session['title']}")
         # Timestamp & Duration metrics row
         m1, m2, m3 = st.columns(3)
         m1.metric("📅 Started At", duration_data["started_at"])
@@ -186,8 +185,14 @@ else:
         if not messages:
             st.info("No messages found for this session.")
         else:
-            # Show conversation directly as a trail
+            # Show conversation directly as a trail with "Session X" markers
+            last_burst = None
             for msg in messages:
+                current_burst = msg.get("burst_number", 1)
+                if current_burst != last_burst:
+                    st.markdown(f"#### 🕓 Session {current_burst}")
+                    last_burst = current_burst
+
                 with st.chat_message(msg['role']):
                     st.markdown(msg['content'])
                     ts = msg.get("timestamp", "")

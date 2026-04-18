@@ -1,8 +1,15 @@
 import streamlit as st
 
 def render_chat_history(messages):
-    """Render the chat history with per-message timestamps."""
+    """Render the chat history with per-message timestamps and session burst headers."""
+    last_burst = None
     for message in messages:
+        # Show Session Header if burst number changes
+        current_burst = message.get("burst_number", 1)
+        if current_burst != last_burst:
+            st.markdown(f"#### 🕓 Session {current_burst}")
+            last_burst = current_burst
+            
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             # Show timestamp as a subtle caption below each message

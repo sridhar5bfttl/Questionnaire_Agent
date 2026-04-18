@@ -61,18 +61,18 @@ def trigger_auto_save():
                     st.session_state.total_output_tokens
                 )
                 
-                # 5. Persist (ALWAYS New record per user request)
+                # 5. Persist (Update existing if resumed, otherwise creates new)
                 session_id = save_chat_session(
                     st.session_state.messages, 
                     title=title,
-                    summary="Incremental Save",
+                    summary="Unified Audit Save (Update)",
                     input_tokens=st.session_state.total_input_tokens,
                     output_tokens=st.session_state.total_output_tokens,
                     total_cost=cost,
                     audit_score=score,
                     audit_feedback=feedback,
                     current_phase=st.session_state.phase.name,
-                    session_id=None, # Force new record
+                    session_id=st.session_state.current_session_id, # Reverted to update
                     user_id=st.session_state.user_id,
                     is_guest=int(st.session_state.is_guest)
                 )
@@ -138,6 +138,13 @@ llm = LLMClient()
 
 # Render Chat History
 render_chat_history(get_messages())
+
+# Visual marker for NEW burst if session was resumed
+if st.session_state.current_session_id and st.session_state.current_burst_number > 1:
+    # Only show if the LAST message in history isn't already from THIS burst
+    messages = get_messages()
+    if not messages or messages[-1].get("burst_number") < st.session_state.current_burst_number:
+        st.markdown(f"#### 🕓 Session {st.session_state.current_burst_number} (Resumed)")
 
 # --- QUOTA & LIMIT CHECKS (Guest Mode) ---
 quota_blocked = False
@@ -244,18 +251,18 @@ if st.session_state.phase in [ChatPhase.SUMMARY, ChatPhase.FEEDBACK]:
                     st.session_state.total_output_tokens
                 )
                 
-                # 3. Save to DB (Always New per request)
+                # 3. Save to DB (Update if Resumed, Otherwise New)
                 session_id = save_chat_session(
                     st.session_state.messages, 
                     title=title,
-                    summary="Manual Audit Save",
+                    summary="Manual Audit Save (Sync)",
                     input_tokens=st.session_state.total_input_tokens,
                     output_tokens=st.session_state.total_output_tokens,
                     total_cost=cost,
                     audit_score=score,
                     audit_feedback=feedback,
                     current_phase=st.session_state.phase.name,
-                    session_id=None, # Force new
+                    session_id=st.session_state.current_session_id, # Reverted to update
                     user_id=st.session_state.user_id,
                     is_guest=int(st.session_state.is_guest)
                 )
