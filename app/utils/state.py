@@ -45,13 +45,13 @@ def update_phase(new_phase: ChatPhase):
     st.session_state.phase = new_phase
 
 def add_message(role: str, content: str):
-    """Add a message to the chat history with a timestamp. Marks session as unsaved."""
+    """Add a message to the chat history with a high-res timestamp. Marks session as unsaved."""
     now = datetime.now()
     st.session_state.messages.append({
         "role": role,
         "content": content,
-        "timestamp": now.strftime("%H:%M"),
-        "raw_timestamp": now.strftime("%Y-%m-%d %H:%M:%S")
+        "timestamp": now.strftime("%H:%M:%S.%f")[:-3], # HH:MM:SS.mmm
+        "raw_timestamp": now.strftime("%Y-%m-%d %H:%M:%S.%f")
     })
     # Any new message makes this session "dirty" — needs saving on exit/reset
     st.session_state.session_saved = False

@@ -181,11 +181,15 @@ def get_session_messages(session_id):
         # Preserve original DB timestamp for re-saving logic
         d["raw_timestamp"] = raw_ts
         try:
-            # Format to: "18 Apr 2026, 09:45"
-            dt = datetime.strptime(raw_ts[:19], "%Y-%m-%d %H:%M:%S")
-            d["timestamp"] = dt.strftime("%d %b %Y, %H:%M")
-        except Exception:
-            d["timestamp"] = raw_ts[:16] if raw_ts else "N/A"
+            # Flexible parsing for both YYYY-MM-DD HH:MM:SS and YYYY-MM-DD HH:MM:SS.ffffff
+            if "." in raw_ts:
+                dt = datetime.strptime(raw_ts[:26], "%Y-%m-%d %H:%M:%S.%f")
+                d["timestamp"] = dt.strftime("%d %b %Y, %H:%M:%S.") + dt.strftime("%f")[:3]
+            else:
+                dt = datetime.strptime(raw_ts[:19], "%Y-%m-%d %H:%M:%S")
+                d["timestamp"] = dt.strftime("%d %b %Y, %H:%M:%S.000")
+        except:
+            d["timestamp"] = raw_ts if raw_ts else "N/A"
         result.append(d)
     return result
 
