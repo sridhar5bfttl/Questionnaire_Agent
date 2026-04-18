@@ -514,10 +514,12 @@ def update_system_setting(key, value):
     conn.close()
 
 def get_admin_user_stats():
-    """Aggregate statistics for all users for the admin dashboard."""
+    """Aggregate comprehensive statistics for all users for the admin dashboard."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    
+    # 1. Base stats from sessions
     cursor.execute('''
         SELECT 
             user_id, 
@@ -529,34 +531,66 @@ def get_admin_user_stats():
         FROM sessions
         GROUP BY user_id
     ''')
-    session_stats = [dict(row) for row in cursor.fetchall()]
+    session_stats = {row['user_id']: dict(row) for row in cursor.fetchall()}
 
-    # Get login counts from activity log
+    # 2. User account & quota data
     cursor.execute('''
-        SELECT user_id, COUNT(*) as login_count 
-        FROM user_activity 
-        WHERE action = 'LOGIN' 
-        GROUP BY user_id
+        SELECT 
+            u.user_id, 
+            u.status, 
+            u.created_at as signup_date,
+            uq.max_sessions,
+            qr.requested_at as last_request_date,
+            qr.decision_at as last_decision_date
+        FROM users u
+        LEFT JOIN user_quotas uq ON u.user_id = uq.user_id
+        LEFT JOIN (
+            SELECT user_id, MAX(requested_at) as requested_at, MAX(decision_at) as decision_at
+            FROM quota_requests
+            GROUP BY user_id
+        ) qr ON u.user_id = qr.user_id
     ''')
-    logins = dict(cursor.fetchall())
+    user_data = [dict(row) for row in cursor.fetchall()]
 
-    # Get request counts
-    cursor.execute('''
-        SELECT user_id, COUNT(*) as request_count 
-        FROM quota_requests 
-        GROUP BY user_id
-    ''')
-    requests = dict(cursor.fetchall())
+    # 3. Merge data
+    final_stats = []
+    processed_uids = set()
+    
+    for user in user_data:
+        uid = user['user_id']
+        s_stats = session_stats.get(uid, {
+            "total_sessions": 0, "total_input": 0, "total_output": 0, 
+            "avg_audit_score": 0, "last_active": "N/A"
+        })
+        
+        # Calculate remaining
+        max_s = user['max_sessions'] or 10 # Default
+        used = s_stats['total_sessions']
+        
+        merged = {
+            **user,
+            **s_stats,
+            "remaining_quota": max(0, max_s - used)
+        }
+        final_stats.append(merged)
+        processed_uids.add(uid)
+
+    # Add any guest IDs that aren't in 'users' table but have sessions
+    for uid, s_stats in session_stats.items():
+        if uid not in processed_uids:
+            final_stats.append({
+                "user_id": uid,
+                "status": "GUEST",
+                "signup_date": "N/A",
+                "max_sessions": 10,
+                "last_request_date": "N/A",
+                "last_decision_date": "N/A",
+                "remaining_quota": max(0, 10 - s_stats['total_sessions']),
+                **s_stats
+            })
 
     conn.close()
-
-    # Merge stats
-    for s in session_stats:
-        uid = s['user_id']
-        s['login_count'] = logins.get(uid, 0)
-        s['request_count'] = requests.get(uid, 0)
-        
-    return session_stats
+    return final_stats
 
 
 def get_user_quota(user_id):

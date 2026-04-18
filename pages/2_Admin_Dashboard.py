@@ -46,13 +46,20 @@ with tab1:
     st.header("Global User Intelligence")
     stats = get_admin_user_stats()
     if stats:
-        df = pd.DataFrame(stats)
+        # Prettify the dataframe for display
+        display_df = df.reindex(columns=[
+            'user_id', 'status', 'signup_date', 'last_decision_date', 
+            'max_sessions', 'total_sessions', 'remaining_quota', 
+            'last_active', 'avg_audit_score'
+        ])
         
-        # Highlight users with weak scores
-        threshold = int(settings.get('audit_threshold', 4))
-        df['status'] = df['avg_audit_score'].apply(lambda x: "⚠️ WEAK" if x < threshold else "✅ HEALTHY")
+        display_df.columns = [
+            'User Email', 'Account Status', 'Joined Date', 'Approved Date',
+            'Total Quota', 'Sessions Used', 'Remaining', 
+            'Last Active', 'Avg Audit Score'
+        ]
         
-        st.dataframe(df.sort_values('last_active', ascending=False), width=1500)
+        st.dataframe(display_df.sort_values('Last Active', ascending=False), width=1500)
         
         # Simple Viz
         fig = px.scatter(df, x="total_sessions", y="avg_audit_score", 
