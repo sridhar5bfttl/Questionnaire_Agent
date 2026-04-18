@@ -6,15 +6,20 @@
 ---
 
 ## 1. Interaction Flow
+### 1a. App Access & Identity Flow
+1. Upon launch, a tabbed **Identity Gatekeeper** checks user status.
+2. Existing approved users log in to the main chat interface.
+3. New users fill out a signup form and are automatically redirected to the **Access Portal** to justify their business case.
+4. "Guest Mode" allows a limited trial (default 4 total sessions) before requiring registration.
 
-### 1a. New Conversation
+### 1b. New Conversation
 1. Agent greets the user and offers 5 AI-powered starter prompts.
 2. Agent probes for input data types (Structured/Unstructured), volumes, quality, and business goals.
 3. Dynamically adjusts questions based on the identified technical domain.
 4. Transitions to **Summary Phase** and presents a structured list of recommended solutions with confidence scores (0-100%).
 5. User can deep dive into the selected architecture.
 
-### 1b. Resume Conversation
+### 1c. Resume Conversation
 1. User opens the **History Dashboard** and selects a previous session.
 2. User clicks **"🚀 Resume Conversation"** to return to the main chat.
 3. Full conversation history and phase context are re-loaded from the database.
@@ -42,14 +47,15 @@
 ## 3. Persistence & UI
 
 ### Data Management
-1. **SQLite Backend**: Local storage for `sessions`, `messages`, and `technical_assessments`.
+1. **SQLite Backend**: Local storage for `sessions`, `messages`, `technical_assessments`, `users`, `user_quotas`, and `quota_requests`.
    - `sessions` table includes `current_phase` column for resumption support.
 2. **Auto-Save on Reset**: Any unsaved session is automatically audited and persisted before state reset.
 3. **Soft Delete**: "Hide from List" functionality to remove sessions from the UI while maintaining audit logs in the backend.
 4. **Upsert Logic**: When a resumed session is saved, it updates the existing record (no duplicates).
 
-### History Dashboard & Reporting
-1. Dedicated multi-page interface (`pages/1_History_Dashboard.py`).
+### Dashboards & Reporting
+1. **Admin Dashboard**: `pages/2_Admin_Dashboard.py` provides Global User Intelligence, tracking new registrants, approval statuses, and monitoring daily/total session limits via an interactive Dataframe.
+2. **History Dashboard**: Dedicated multi-page interface (`pages/1_History_Dashboard.py`).
 2. **Global Analytics**: Token Usage Timelines and Cumulative Budget Utilization (via Plotly).
 3. **Session Review**: Drill-down with full transcripts (featuring **high-resolution timestamps** down to milliseconds) and AI audit feedback.
 4. **Professional Export**: Consolidated PDF reports including transcript, audit, and resource usage.

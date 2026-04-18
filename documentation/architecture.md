@@ -17,7 +17,10 @@ Vantage Point AI is a multi-agent diagnostic system built on **Streamlit**, **La
   - **Quality Scoring**: Evaluates conversations on a 1-10 scale.
   - **Cost Tracking**: Calculates token usage and USD costs (GPT-5.1 pricing).
   - **Intelligence Extraction**: Parses raw summaries into structured data (Category, Confidence, Rationale).
-  - **Auto-Labeling**: Generates AI titles for session persistence.
+### C. The Quota Agent (Administration)
+- **Role**: AI-driven administrative assistant.
+- **Responsibilities**:
+  - Reviews user extension requests and drafts business case justifications based on their previous chat analytics.
 
 ---
 
@@ -25,23 +28,27 @@ Vantage Point AI is a multi-agent diagnostic system built on **Streamlit**, **La
 
 ```mermaid
 graph TD
-    User([User]) <--> UI[Streamlit Frontend]
+    User([User]) <--> Auth[Identity Gatekeeper]
+    Auth -- Pending / New --> Quota[Access & Quota Portal]
+    Auth -- Approved / Guest --> UI[Streamlit Main Chat]
     
     subgraph "Intelligent Core"
         UI <--> LLM["LLM Client (GPT-4o)"]
-        UI -- Save / Reset Event --> Auditor[Auditor Agent]
+        UI -- Save / Reset --> Auditor[Auditor Agent]
+        Quota <--> QAgent[Quota Agent]
     end
     
     subgraph "Persistence Layer"
         Auditor -- Metadata + Phase --> SQL[(SQLite DB)]
         LLM -- Transcript --> SQL
-        SQL -- Upsert on Resume --> SQL
+        Auth -- User/Status --> SQL
+        Quota -- Limitations/Requests --> SQL
     end
     
-    subgraph "Analytics & Reporting"
+    subgraph "Analytics & Management"
         SQL --> Dashboard[History Dashboard]
         Dashboard -- Resume Flag --> UI
-        Dashboard --> PDF[PDF Report Generator]
+        SQL --> Admin[Admin Dashboard]
     end
 ```
 

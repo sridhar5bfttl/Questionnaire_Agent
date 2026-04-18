@@ -92,20 +92,26 @@ To solve the problem of inflated duration in resumed sessions, the `get_session_
   3. Specialized prompt returns a validated JSON object with `classification`, `confidence`, `rationale`.
   4. Persist to the `assessments` table via `save_assessment()`.
 
-## 12. Directory Structure
+## 12. Identity & Quota Management Pattern
+- **Gatekeeper Logic**: `st.session_state.is_guest` determines access. Unauthenticated users are presented with a tabbed Login/Signup gate on main app launch.
+- **Hidden Portals**: The Request Access portal is prefixed with an underscore (`pages/_Request_Access.py`) to hide it from the Streamlit sidebar, keeping it contextual to programmatic logic (`st.switch_page`).
+- **Quota Overrides**: Global fallbacks like `GUEST_MAX_SESSIONS` are overridden by per-user limits defined in the `user_quotas` table.
+- **Admin Tabular Analytics**: The UI uses pandas to render cross-joined data between `users`, `sessions`, and `user_quotas` inside `db_manager.py:get_admin_user_stats()` to present a unified "Global Intelligence" dashboard.
+
+## 13. Directory Structure
 ```
 /app/           - Logic layer
   /components/  - Modular UI (chat, prompts)
-  /utils/       - Core utilities (db, state, llm, auditor, pdf)
+  /utils/       - Core utilities (db, state, llm, auditor, pdf, quota_agent)
   /prompts/     - Versioned txt templates for agents
-/pages/         - Secondary app pages (Dashboard)
+/pages/         - Secondary app pages (History Dashboard, Admin Dashboard, Request Access)
 /data/          - SQLite persistence store
 /tests/         - Logic and DB integrity tests
 /assets/        - Custom CSS theme
 /documentation/ - Architecture and user guides
 ```
 
-## 13. Mandatory Development Workflow
+## 14. Mandatory Development Workflow
 To maintain project integrity:
 1. **Schema Check**: When adding a new metric, update `init_db()` and run `ALTER TABLE` on the existing DB.
 2. **Implementation**: Build logic in `/app/utils/` before touching the UI.

@@ -4,10 +4,27 @@ Welcome to **Vantage Point AI**! This guide will help you navigate the applicati
 
 ---
 
-## 1. Starting an Assessment
+## 1. Accessing the Platform
+
+### The Identity Gatekeeper
+When you launch Vantage Point AI, you must identify yourself:
+- **Existing Users**: Use the **Login** tab to access the platform immediately.
+- **New Users**: Use the **Signup** tab. You will be redirected to the **Access Portal** where you must submit a usecase justification. An administrator will review and approve your account.
+- **Guest Mode**: You may click "Work with Application" to test the system with a limited capacity of 10 total sessions.
+
+### My Usage Dashboard
+Once logged in, your personal dashboard appears in the sidebar:
+- Tracks your active **Interaction Time**.
+- Displays remaining **Session Quota** (e.g., 5/20 sessions).
+- Monitors real-time **Token Consumption**.
+- Provides a direct link to request a quota extension.
+
+---
+
+## 2. Starting an Assessment
 
 ### The Greeting Phase
-When you launch the app, you'll be greeted by the **Consultant Agent**. 
+When you enter the chat, you'll be greeted by the **Consultant Agent**. 
 - You can either type your business problem manually in the chat box or...
 - Use one of the **5 Starter Prompts** (e.g., "Automate invoice processing") to see immediate results.
 

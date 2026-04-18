@@ -16,6 +16,9 @@ An enterprise-grade **Strategic Assessment Platform** built with Streamlit and L
 | 📄 **PDF Reports** | Professional consolidated reports including transcript, audit, and resource usage |
 | 🎨 **Glassmorphism UI** | Premium custom CSS theme for a modern, enterprise look |
 | 🔑 **3-Tier Auth** | Supports Streamlit Secrets, `.env`, and UI key input for any deployment |
+| 🛡️ **Identity Gatekeeper** | Tabbed Login/Signup interface with Guest mode access |
+| 📈 **Admin Dashboard** | Global user intelligence, approval queues, and engagement vs. quality matrix |
+| 🚦 **Dynamic Quotas** | Automatic redirection to the Access & Quota portal for limit extensions |
 | 🗑️ **Soft Delete** | Hide sessions from the UI without losing audit data |
 
 ---
@@ -26,7 +29,9 @@ An enterprise-grade **Strategic Assessment Platform** built with Streamlit and L
 Questionnaire_Agent/
 ├── app.py                      # Main Streamlit chat interface
 ├── pages/
-│   └── 1_History_Dashboard.py # Analytics & history viewer
+│   ├── 1_History_Dashboard.py # Analytics & history viewer
+│   ├── 2_Admin_Dashboard.py   # Global user intelligence & quota approvals
+│   └── _Request_Access.py     # Hidden Access & Quota portal
 ├── app/
 │   ├── components/             # Reusable UI components
 │   ├── prompts/                # Agent system prompt templates
@@ -44,7 +49,7 @@ Questionnaire_Agent/
 ├── tests/                      # Automated test suite
 ├── DEPLOY.md                   # Deployment & configuration guide
 └── data/
-    └── conversations.db        # Local SQLite database
+    └── conversations.db        # Local SQLite database (Sessions, Users, Quotas)
 ```
 
 ---
