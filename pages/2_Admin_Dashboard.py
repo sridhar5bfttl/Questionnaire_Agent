@@ -1,0 +1,100 @@
+import streamlit as st
+import pandas as pd
+from app.utils.db_manager import (
+    get_admin_user_stats, 
+    get_all_quota_requests, 
+    update_quota_request, 
+    get_system_settings, 
+    update_system_setting
+)
+from app.config import ADMIN_USER, ADMIN_PASS
+import plotly.express as px
+
+st.set_page_config(page_title="Vantage Point Admin", page_icon="🛡️", layout="wide")
+
+# --- AUTHENTICATION ---
+if "admin_logged_in" not in st.session_state:
+    st.session_state.admin_logged_in = False
+
+if not st.session_state.admin_logged_in:
+    st.title("🛡️ Admin Secure Login")
+    with st.form("login_form"):
+        user = st.text_input("Admin Username")
+        pw = st.text_input("Password", type="password")
+        if st.form_submit_button("Access Dashboard"):
+            if user == ADMIN_USER and pw == ADMIN_PASS:
+                st.session_state.admin_logged_in = True
+                st.rerun()
+            else:
+                st.error("Invalid Credentials")
+    st.stop()
+
+# --- DASHBOARD UI ---
+st.title("🛡️ Strategic Admin Command Center")
+st.sidebar.button("Logout", on_click=lambda: st.session_state.update({"admin_logged_in": False}))
+
+settings = get_system_settings()
+admin_email = settings.get('admin_notification_email', 'admin@vantagepoint.ai')
+
+# --- TABBED INTERFACE ---
+tab1, tab2, tab3 = st.tabs(["📊 User Activity Stats", "📬 Quota Requests", "⚙️ System Settings"])
+
+with tab1:
+    st.header("Global User Intelligence")
+    stats = get_admin_user_stats()
+    if stats:
+        df = pd.DataFrame(stats)
+        
+        # Highlight users with weak scores
+        threshold = int(settings.get('audit_threshold', 4))
+        df['status'] = df['avg_audit_score'].apply(lambda x: "⚠️ WEAK" if x < threshold else "✅ HEALTHY")
+        
+        st.dataframe(df.sort_values('last_active', ascending=False), width=1500)
+        
+        # Simple Viz
+        fig = px.scatter(df, x="total_sessions", y="avg_audit_score", 
+                         size="total_input", color="status", hover_name="user_id",
+                         title="Engagement vs. Quality Matrix")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No user activity recorded yet.")
+
+with tab2:
+    st.header("Pending & Historical Requests")
+    requests = get_all_quota_requests()
+    if requests:
+        for req in requests:
+            with st.expander(f"Request {req['id']}: {req['user_id']} ({req['status']})", expanded=(req['status'] == 'PENDING')):
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.write(f"**Requested At:** {req['requested_at']}")
+                    st.write(f"**Justification Drafted by Agent:**")
+                    st.info(req['justification'])
+                
+                with c2:
+                    if req['status'] == 'PENDING':
+                        new_notes = st.text_area("Admin Notes", key=f"notes_{req['id']}")
+                        col_a, col_r = st.columns(2)
+                        if col_a.button("Approve", key=f"app_{req['id']}"):
+                            update_quota_request(req['id'], 'APPROVED', new_notes)
+                            st.success("Approved!")
+                            st.rerun()
+                        if col_r.button("Reject", key=f"rej_{req['id']}", type="primary"):
+                            update_quota_request(req['id'], 'REJECTED', new_notes)
+                            st.error("Rejected.")
+                            st.rerun()
+                    else:
+                        st.write(f"**Decision at:** {req['decision_at']}")
+                        st.write(f"**Notes:** {req['admin_notes']}")
+    else:
+        st.info("No extension requests received.")
+
+with tab3:
+    st.header("Global Constants")
+    new_email = st.text_input("Admin Notification Email", value=admin_email)
+    new_threshold = st.slider("Audit Score Threshold (Weak vs Healthy)", 0, 10, int(settings.get('audit_threshold', 4)))
+    
+    if st.button("Save Settings"):
+        update_system_setting('admin_notification_email', new_email)
+        update_system_setting('audit_threshold', str(new_threshold))
+        st.success("Settings updated globally.")

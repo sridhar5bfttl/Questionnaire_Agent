@@ -4,8 +4,18 @@ from app.utils.state import init_state, ChatPhase, update_phase, add_message, ge
 from app.utils.llm_client import LLMClient
 from app.components.chat_interface import render_chat_history, render_chat_input
 from app.components.starter_prompts import render_starter_prompts
-from app.utils.db_manager import init_db, save_chat_session, save_assessment, get_session_messages, get_all_sessions, get_user_stats
+from app.utils.db_manager import (
+    init_db, save_chat_session, save_assessment, 
+    get_session_messages, get_all_sessions, get_user_stats,
+    log_activity, create_quota_request, get_all_quota_requests,
+    get_system_settings
+)
 from app.utils.auditor_agent import AuditorAgent
+from app.utils.quota_agent import QuotaAgent
+from app.config import (
+    GUEST_MAX_SESSIONS, GUEST_DAILY_SESSIONS, 
+    GUEST_TOKEN_LIMIT, AUDIT_THRESHOLD
+)
 
 # Page Configuration
 st.set_page_config(page_title="Vantage Point AI", page_icon="🎯", layout="wide")
@@ -94,6 +104,7 @@ with st.sidebar:
         if email and st.button("Login"):
             st.session_state.user_id = email
             st.session_state.is_guest = False
+            log_activity(email, "LOGIN")
             st.success(f"Welcome, {email}!")
             st.rerun()
     else:
@@ -157,12 +168,46 @@ if st.session_state.is_guest:
     stats = get_user_stats(st.session_state.user_id)
     # 1. Conversation Count Limits (Only check if starting a NEW session)
     if not st.session_state.current_session_id:
-        if stats['daily'] >= 2:
-            st.error("🚫 **Daily Limit Reached**: You have used your 2 daily guest sessions. Please login to continue.")
+        limit_reached = False
+        if stats['daily'] >= GUEST_DAILY_SESSIONS:
+            st.error(f"🚫 **Daily Limit Reached**: You have used your {GUEST_DAILY_SESSIONS} daily guest sessions.")
+            limit_reached = True
+        elif stats['total'] >= GUEST_MAX_SESSIONS:
+            st.error(f"🚫 **Total Limit Reached**: You have reached the maximum of {GUEST_MAX_SESSIONS} guest sessions.")
+            limit_reached = True
+        
+        if limit_reached:
             quota_blocked = True
-        elif stats['total'] >= 4:
-            st.error("🚫 **Total Limit Reached**: You have reached the maximum of 4 guest sessions. Please login to see your full history or start more chats.")
-            quota_blocked = True
+            st.info("💡 Need more quota? Our AI agent can generate an extension request for you.")
+            
+            # Check for existing pending request
+            all_reqs = get_all_quota_requests()
+            user_reqs = [r for r in all_reqs if r['user_id'] == st.session_state.user_id and r['status'] == 'PENDING']
+            
+            if user_reqs:
+                st.warning("⏳ You have a pending request. Please wait for the admin to review it.")
+            else:
+                user_email = st.text_input("Confirm your Email ID for the request", value="" if st.session_state.user_id == "guest_default" else st.session_state.user_id)
+                if user_email and st.button("🚀 Draft & Send Quota Extension Request"):
+                    with st.spinner("Analyzing your interaction score and drafting request..."):
+                        # Calculate current user merit
+                        all_sessions = get_all_sessions()
+                        user_sessions = [s for s in all_sessions if s['user_id'] == st.session_state.user_id]
+                        avg_score = sum([s['audit_score'] for s in user_sessions]) / len(user_sessions) if user_sessions else 0
+                        
+                        settings = get_system_settings()
+                        min_threshold = int(settings.get('audit_threshold', AUDIT_THRESHOLD))
+                        
+                        if avg_score < min_threshold and len(user_sessions) > 0:
+                            st.error(f"❌ **Extension Denied**: Your current interaction score ({avg_score:.1f}/10) is below the required threshold ({min_threshold}). Please focus on providing more specific use case details in your next available session.")
+                            log_activity(st.session_state.user_id, "QUOTA_REQUEST_DENIED_AUTO", f"Score: {avg_score}")
+                        else:
+                            qa = QuotaAgent()
+                            justification = qa.generate_justification(user_email, st.session_state.messages, stats)
+                            create_quota_request(user_email, True, justification)
+                            log_activity(user_email, "QUOTA_REQUEST_SUBMITTED")
+                            st.success("✅ **Request Sent!** The administrator has been notified. You will receive an email update once reviewed.")
+                            st.balloons()
     
     # 2. Token Limit Check
     total_tokens = st.session_state.total_input_tokens + st.session_state.total_output_tokens

@@ -56,6 +56,43 @@ def init_db():
             FOREIGN KEY (session_id) REFERENCES sessions (id)
         )
     ''')
+
+    # Table for Quota Extension Requests
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS quota_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            is_guest INTEGER DEFAULT 1,
+            requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'PENDING',
+            justification TEXT,
+            decision_at DATETIME,
+            admin_notes TEXT
+        )
+    ''')
+
+    # Table for User Activity Log (Logins, specific actions)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_activity (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            action TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            metadata TEXT
+        )
+    ''')
+
+    # Table for Admin/System Settings (Configurable Emails, Thresholds)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    ''')
+    
+    # Initialize default admin email if not present
+    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('admin_notification_email', 'admin@vantagepoint.ai')")
+    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('audit_threshold', '4')")
     
     # Migration: Handle existing databases
     try:
@@ -382,3 +419,110 @@ def get_session_duration(session_id):
         "duration_minutes": duration_min,
         "duration_formatted": duration_formatted
     }
+
+# --- ADMIN & QUOTA EXTENSION UTILITIES ---
+
+def log_activity(user_id, action, metadata=""):
+    """Log a user action for auditing."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO user_activity (user_id, action, metadata) VALUES (?, ?, ?)', 
+                   (user_id, action, metadata))
+    conn.commit()
+    conn.close()
+
+def create_quota_request(user_id, is_guest, justification):
+    """Submit a new quota extension request."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO quota_requests (user_id, is_guest, justification)
+        VALUES (?, ?, ?)
+    ''', (user_id, int(is_guest), justification))
+    conn.commit()
+    conn.close()
+
+def get_all_quota_requests():
+    """Retrieve all pending and historical quota requests."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM quota_requests ORDER BY requested_at DESC')
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def update_quota_request(request_id, status, notes=""):
+    """Approve or Reject a quota request."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE quota_requests 
+        SET status = ?, admin_notes = ?, decision_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (status, notes, request_id))
+    conn.commit()
+    conn.close()
+
+def get_system_settings():
+    """Get all global key-value settings."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT key, value FROM system_settings')
+    rows = cursor.fetchall()
+    conn.close()
+    return dict(rows)
+
+def update_system_setting(key, value):
+    """Update a global system setting."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)', (key, value))
+    conn.commit()
+    conn.close()
+
+def get_admin_user_stats():
+    """Aggregate statistics for all users for the admin dashboard."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT 
+            user_id, 
+            COUNT(id) as total_sessions,
+            SUM(input_tokens) as total_input,
+            SUM(output_tokens) as total_output,
+            AVG(audit_score) as avg_audit_score,
+            MAX(timestamp) as last_active
+        FROM sessions
+        GROUP BY user_id
+    ''')
+    session_stats = [dict(row) for row in cursor.fetchall()]
+
+    # Get login counts from activity log
+    cursor.execute('''
+        SELECT user_id, COUNT(*) as login_count 
+        FROM user_activity 
+        WHERE action = 'LOGIN' 
+        GROUP BY user_id
+    ''')
+    logins = dict(cursor.fetchall())
+
+    # Get request counts
+    cursor.execute('''
+        SELECT user_id, COUNT(*) as request_count 
+        FROM quota_requests 
+        GROUP BY user_id
+    ''')
+    requests = dict(cursor.fetchall())
+
+    conn.close()
+
+    # Merge stats
+    for s in session_stats:
+        uid = s['user_id']
+        s['login_count'] = logins.get(uid, 0)
+        s['request_count'] = requests.get(uid, 0)
+        
+    return session_stats
+
