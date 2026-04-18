@@ -46,6 +46,8 @@ with tab1:
     st.header("Global User Intelligence")
     stats = get_admin_user_stats()
     if stats:
+        df = pd.DataFrame(stats)
+        
         # Prettify the dataframe for display
         display_df = df.reindex(columns=[
             'user_id', 'status', 'signup_date', 'last_decision_date', 
