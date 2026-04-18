@@ -214,7 +214,7 @@ def hide_session(session_id):
 def get_session_duration(session_id):
     """
     Calculate the active duration of a session by summing intervals between messages.
-    Ignores large gaps (e.g., > 30 mins) to account for resumed sessions.
+    Respects millisecond precision for accurate timing.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -228,48 +228,55 @@ def get_session_duration(session_id):
     conn.close()
 
     if not rows:
-        return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0}
+        return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0, "duration_formatted": "0s"}
 
-    fmt = "%Y-%m-%d %H:%M:%S"
+    fmt_full = "%Y-%m-%d %H:%M:%S.%f"
+    fmt_short = "%Y-%m-%d %H:%M:%S"
     timestamps = []
+    
     for r in rows:
+        raw_ts = r[0]
         try:
-            # Strip sub-seconds if present from raw SQLite timestamps
-            ts_str = r[0].split('.')[0] if '.' in r[0] else r[0]
-            timestamps.append(datetime.strptime(ts_str, fmt))
+            if "." in raw_ts:
+                # Handle potential truncation of microseconds at the end
+                ts_part = raw_ts[:26]
+                timestamps.append(datetime.strptime(ts_part, fmt_full))
+            else:
+                timestamps.append(datetime.strptime(raw_ts[:19], fmt_short))
         except:
             continue
 
     if not timestamps:
-        return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0}
+        return {"started_at": "N/A", "ended_at": "N/A", "duration_minutes": 0, "duration_formatted": "0s"}
 
-    total_seconds = 0
-    GAP_THRESHOLD = 30 * 60  # 30 minutes in seconds
+    total_seconds = 0.0
+    GAP_THRESHOLD = 30 * 60  # 30 minutes
+    burst_count = 1
 
     for i in range(1, len(timestamps)):
         diff = (timestamps[i] - timestamps[i-1]).total_seconds()
         if diff < GAP_THRESHOLD:
             total_seconds += diff
-        # Else: ignore the gap, it's a resume after a long break
+        else:
+            burst_count += 1
+    
+    # Add a 10s "thought time" floor per active burst, instead of a blanket 60s
+    total_seconds += (burst_count * 10)
 
-    # Add a small buffer (e.g. 1 min) for the very first message's thought time 
-    # and final response if there are messages
-    if total_seconds > 0 or len(timestamps) > 0:
-        total_seconds += 60 
-
-    duration_min = round(total_seconds / 60, 1)
+    duration_min = round(total_seconds / 60, 2)
     
     # Format as Mm Ss
     mins = int(total_seconds // 60)
     secs = int(total_seconds % 60)
+    
     if mins > 0:
         duration_formatted = f"{mins}m {secs}s"
     else:
         duration_formatted = f"{secs}s"
     
     return {
-        "started_at": timestamps[0].strftime("%d %b %Y, %H:%M"),
-        "ended_at": timestamps[-1].strftime("%H:%M"),
+        "started_at": timestamps[0].strftime("%d %b %Y, %H:%M:%S"),
+        "ended_at": timestamps[-1].strftime("%H:%M:%S"),
         "duration_minutes": duration_min,
         "duration_formatted": duration_formatted
     }
