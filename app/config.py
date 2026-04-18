@@ -12,7 +12,7 @@ ADMIN_PASS = st.secrets.get("ADMIN_PASS") or os.getenv("ADMIN_PASS") or "archite
 ADMIN_EMAIL = st.secrets.get("ADMIN_EMAIL") or os.getenv("ADMIN_EMAIL") or "admin@vantagepoint.ai"
 
 # --- QUOTA SETTINGS (GUEST) ---
-GUEST_MAX_SESSIONS = 4
+GUEST_MAX_SESSIONS = 10
 GUEST_DAILY_SESSIONS = 2
 GUEST_TOKEN_LIMIT = 3000
 

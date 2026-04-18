@@ -93,6 +93,16 @@ def init_db():
             value TEXT
         )
     ''')
+
+    # Table for Individual User Quotas
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_quotas (
+            user_id TEXT PRIMARY KEY,
+            max_sessions INTEGER DEFAULT 10,
+            max_daily_sessions INTEGER DEFAULT 2,
+            max_tokens INTEGER DEFAULT 5000
+        )
+    ''')
     
     # Initialize default admin email if not present
     cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('admin_notification_email', ?)", (ADMIN_EMAIL,))
@@ -529,4 +539,31 @@ def get_admin_user_stats():
         s['request_count'] = requests.get(uid, 0)
         
     return session_stats
+
+
+def get_user_quota(user_id):
+    """Get the current quota limits for a specific user ID."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM user_quotas WHERE user_id = ?', (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return dict(row)
+    else:
+        # Return defaults if not specially set
+        return {"user_id": user_id, "max_sessions": 10, "max_daily_sessions": 2, "max_tokens": 5000}
+
+def set_user_quota(user_id, max_sessions, max_daily=2, max_tokens=5000):
+    """Set or update a specific user's quota limits."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO user_quotas (user_id, max_sessions, max_daily_sessions, max_tokens)
+        VALUES (?, ?, ?, ?)
+    ''', (user_id, max_sessions, max_daily, max_tokens))
+    conn.commit()
+    conn.close()
 

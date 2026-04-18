@@ -8,7 +8,7 @@ from app.utils.db_manager import (
     init_db, save_chat_session, save_assessment, 
     get_session_messages, get_all_sessions, get_user_stats,
     log_activity, create_quota_request, get_all_quota_requests,
-    get_system_settings
+    get_system_settings, get_user_quota
 )
 from app.utils.auditor_agent import AuditorAgent
 from app.utils.quota_agent import QuotaAgent
@@ -166,14 +166,16 @@ if st.session_state.current_session_id and st.session_state.current_burst_number
 quota_blocked = False
 if st.session_state.is_guest:
     stats = get_user_stats(st.session_state.user_id)
+    user_quota = get_user_quota(st.session_state.user_id)
+    
     # 1. Conversation Count Limits (Only check if starting a NEW session)
     if not st.session_state.current_session_id:
         limit_reached = False
-        if stats['daily'] >= GUEST_DAILY_SESSIONS:
-            st.error(f"🚫 **Daily Limit Reached**: You have used your {GUEST_DAILY_SESSIONS} daily guest sessions.")
+        if stats['daily'] >= user_quota['max_daily_sessions']:
+            st.error(f"🚫 **Daily Limit Reached**: You have used your {user_quota['max_daily_sessions']} daily guest sessions.")
             limit_reached = True
-        elif stats['total'] >= GUEST_MAX_SESSIONS:
-            st.error(f"🚫 **Total Limit Reached**: You have reached the maximum of {GUEST_MAX_SESSIONS} guest sessions.")
+        elif stats['total'] >= user_quota['max_sessions']:
+            st.error(f"🚫 **Total Limit Reached**: You have reached the maximum of {user_quota['max_sessions']} guest sessions.")
             limit_reached = True
         
         if limit_reached:

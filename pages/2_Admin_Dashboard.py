@@ -5,7 +5,8 @@ from app.utils.db_manager import (
     get_all_quota_requests, 
     update_quota_request, 
     get_system_settings, 
-    update_system_setting
+    update_system_setting,
+    set_user_quota
 )
 from app.config import ADMIN_USER, ADMIN_PASS
 import plotly.express as px
@@ -74,9 +75,14 @@ with tab2:
                 with c2:
                     if req['status'] == 'PENDING':
                         new_notes = st.text_area("Admin Notes", key=f"notes_{req['id']}")
+                        # New Limit Controls
+                        new_limit = st.number_input("Grant Session Limit", min_value=10, max_value=100, value=20, key=f"limit_{req['id']}")
+                        new_daily = st.number_input("Grant Daily Limit", min_value=2, max_value=20, value=5, key=f"daily_{req['id']}")
+                        
                         col_a, col_r = st.columns(2)
                         if col_a.button("Approve", key=f"app_{req['id']}"):
                             update_quota_request(req['id'], 'APPROVED', new_notes)
+                            set_user_quota(req['user_id'], new_limit, new_daily)
                             st.success("Approved!")
                             st.rerun()
                         if col_r.button("Reject", key=f"rej_{req['id']}", type="primary"):
