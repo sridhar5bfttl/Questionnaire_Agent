@@ -500,6 +500,7 @@ def log_activity(user_id, action, metadata=""):
 
 def create_quota_request(user_id, is_guest, justification, request_type='EXTENSION', requested_limit=10):
     """Submit a new quota or access request."""
+    ensure_user(user_id)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -674,6 +675,7 @@ def get_user_status(user_id):
 
 def update_user_status(user_id, status):
     """Administrator action to approve/reject a new registration."""
+    ensure_user(user_id)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET status = ? WHERE user_id = ?', (status, user_id))

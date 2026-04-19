@@ -184,6 +184,7 @@ if st.session_state.is_guest and not st.session_state.bypass_login:
         login_email = st.text_input("Registered Email", placeholder="user@example.com", key="login_email")
         if st.button("Access Platform", type="primary"):
             if login_email:
+                login_email = login_email.strip().lower()
                 status = get_user_status(login_email)
                 if status == "APPROVED":
                     st.session_state.user_id = login_email
@@ -203,6 +204,7 @@ if st.session_state.is_guest and not st.session_state.bypass_login:
         signup_email = st.text_input("New Registration Email", placeholder="user@example.com", key="signup_email")
         if st.button("Start Registration", type="secondary"):
             if signup_email:
+                signup_email = signup_email.strip().lower()
                 status = get_user_status(signup_email)
                 if status != "GUEST":
                     st.warning(f"Account for {signup_email} already exists. Please use the Login tab.")

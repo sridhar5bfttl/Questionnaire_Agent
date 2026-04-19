@@ -64,6 +64,9 @@ with st.form("request_form"):
     submit = st.form_submit_button("🚀 Submit Request to Administrator")
 
 if submit:
+    if email:
+        email = email.strip().lower()
+        
     if not email or "@" not in email:
         st.error("Please enter a valid email address.")
     elif not use_case or len(use_case) < 30:
