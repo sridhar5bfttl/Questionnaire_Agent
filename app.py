@@ -397,7 +397,7 @@ if st.session_state.phase in [ChatPhase.SUMMARY, ChatPhase.FEEDBACK]:
 # Footer
 st.sidebar.markdown("---")
 st.sidebar.info(f"Current Phase: **{st.session_state.phase.name}**")
-if st.sidebar.button("Reset Chat"):
+if st.sidebar.button("Save and New Chat"):
     # Auto-save before reset if not already saved and history exists
     if trigger_auto_save():
         st.toast("Session auto-saved!")

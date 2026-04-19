@@ -46,7 +46,7 @@ Once the agent provides a **Technical Summary**, you will see a **💾 Save to D
 - **Cost Tracking**: The system will estimate the cost of the AI interaction based on the GPT-5.1 pricing model.
 
 ### Resetting & Auto-Save
-If you click **"Reset Chat"** in the sidebar:
+If you click **"Save and New Chat"** in the sidebar:
 - **Auto-Save**: If you haven't saved your current session yet, the system will **automatically** perform an audit and save it to the database before clearing the screen. This ensures no technical assessment is ever lost.
 
 ---
